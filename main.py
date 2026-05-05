@@ -40,13 +40,14 @@ def main(
         now_utc = datetime.now(timezone.utc)
 
     if kickoff_mode:
+        force = "--force" in sys.argv
         odds_key = os.environ["ODDS_API_KEY"]
-        fetch_date = (now_utc + _KICKOFF_TARGET).date()
+        fetch_date = now_utc.date() if force else (now_utc + _KICKOFF_TARGET).date()
         pl = fetch_matches(api_key, "PL", "Premier League", fetch_date)
         ucl = fetch_matches(api_key, "CL", "Champions League", fetch_date)
         upcoming = []
         for match in pl + ucl:
-            if not _in_window(match.get("datetime_utc"), now_utc, _KICKOFF_TARGET):
+            if not force and not _in_window(match.get("datetime_utc"), now_utc, _KICKOFF_TARGET):
                 continue
             home_lu, away_lu = fetch_lineup(api_key, match["match_id"])
             handicap = fetch_handicap(odds_key, match["competition"], match["home_team"], match["away_team"])
