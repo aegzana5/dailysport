@@ -25,12 +25,14 @@ def fetch_sessions(today: date | None = None) -> list[dict]:
                 dt_utc = datetime.strptime(raw_start[:16], "%Y-%m-%dT%H:%M").replace(tzinfo=timezone.utc)
                 time_ict = dt_utc.astimezone(_ICT).strftime("%H:%M") + " ICT"
             else:
+                dt_utc = None
                 time_ict = "TBC"
             sessions.append(
                 {
                     "label": f"{country} GP — {session_type}",
                     "time": time_ict,
                     "competition": "Formula 1",
+                    "datetime_utc": dt_utc,
                 }
             )
         return sessions

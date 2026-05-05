@@ -1,5 +1,5 @@
 from datetime import date
-from formatter import format_embed
+from formatter import format_embed, format_reminder
 
 _PL = [{"label": "Arsenal vs Chelsea", "time": "19:45 UTC", "competition": "Premier League"}]
 _UCL = [{"label": "PSG vs Barcelona", "time": "20:00 UTC", "competition": "Champions League"}]
@@ -33,6 +33,12 @@ def test_returns_dict_with_content_key():
     result = format_embed({"Premier League": _PL}, date(2026, 5, 5))
     assert "content" in result
     assert isinstance(result["content"], str)
+
+
+def test_format_reminder_includes_thai_alert_header():
+    result = format_reminder({"Premier League": _PL}, date(2026, 5, 5))
+    assert "แจ้งเตือน" in result["content"]
+    assert "Arsenal vs Chelsea" in result["content"]
 
 
 def test_multiple_matches_same_sport():

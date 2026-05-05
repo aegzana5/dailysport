@@ -1,25 +1,49 @@
 from __future__ import annotations
 
 import os
-from datetime import date
+import sys
+from datetime import date, datetime, timezone, timedelta
 
 from fetchers.football import fetch_matches
 from fetchers.f1 import fetch_sessions
-from formatter import format_embed
+from formatter import format_embed, format_reminder
 from discord_webhook import post_to_webhook
 
+_REMINDER_TARGET = timedelta(hours=2)
+_REMINDER_WINDOW = timedelta(minutes=15)
 
-def main() -> None:
+
+def _in_window(dt_utc: datetime | None, now_utc: datetime) -> bool:
+    if dt_utc is None:
+        return False
+    delta = dt_utc - now_utc
+    return (_REMINDER_TARGET - _REMINDER_WINDOW) <= delta <= (_REMINDER_TARGET + _REMINDER_WINDOW)
+
+
+def main(now_utc: datetime | None = None, reminder_mode: bool = False) -> None:
+    if not reminder_mode:
+        reminder_mode = "--reminder" in sys.argv
+
     api_key = os.environ["FOOTBALL_DATA_API_KEY"]
     webhook_url = os.environ["DISCORD_WEBHOOK_URL"]
-    today = date.today()
 
-    pl = fetch_matches(api_key, "PL", "Premier League", today)
-    ucl = fetch_matches(api_key, "CL", "Champions League", today)
-    f1 = fetch_sessions(today)
+    if now_utc is None:
+        now_utc = datetime.now(timezone.utc)
+
+    fetch_date = (now_utc + _REMINDER_TARGET).date() if reminder_mode else now_utc.date()
+
+    pl = fetch_matches(api_key, "PL", "Premier League", fetch_date)
+    ucl = fetch_matches(api_key, "CL", "Champions League", fetch_date)
+    f1 = fetch_sessions(fetch_date)
+
+    if reminder_mode:
+        pl = [m for m in pl if _in_window(m.get("datetime_utc"), now_utc)]
+        ucl = [m for m in ucl if _in_window(m.get("datetime_utc"), now_utc)]
+        f1 = [m for m in f1 if _in_window(m.get("datetime_utc"), now_utc)]
 
     if not pl and not ucl and not f1:
-        print("No matches today. Skipping.")
+        mode = "reminder window" if reminder_mode else "today"
+        print(f"No matches for {mode}. Skipping.")
         return
 
     matches_by_sport: dict[str, list[dict]] = {}
@@ -30,7 +54,7 @@ def main() -> None:
     if f1:
         matches_by_sport["Formula 1"] = f1
 
-    payload = format_embed(matches_by_sport, today)
+    payload = format_reminder(matches_by_sport, fetch_date) if reminder_mode else format_embed(matches_by_sport, fetch_date)
     post_to_webhook(webhook_url, payload)
     total = sum(len(v) for v in matches_by_sport.values())
     print(f"Posted {total} event(s) to Discord.")

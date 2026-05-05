@@ -1,9 +1,11 @@
 from unittest.mock import patch
+from datetime import datetime, timezone
 import pytest
 import main  # import at module level so patch("main.X") works
 
 
 _ENV = {"FOOTBALL_DATA_API_KEY": "key", "DISCORD_WEBHOOK_URL": "https://hook"}
+_MATCH_DT = datetime(2026, 5, 5, 19, 45, tzinfo=timezone.utc)
 
 
 def test_no_matches_skips_discord_post():
@@ -49,3 +51,30 @@ def test_missing_env_var_raises():
         pytest.raises(KeyError),
     ):
         main.main()
+
+
+def test_reminder_posts_when_match_in_2h_window():
+    now = datetime(2026, 5, 5, 17, 45, tzinfo=timezone.utc)
+    pl = [{"label": "Arsenal vs Chelsea", "time": "02:45 ICT", "competition": "Premier League", "datetime_utc": _MATCH_DT}]
+    with (
+        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_sessions", return_value=[]),
+        patch("main.post_to_webhook") as mock_post,
+        patch.dict("os.environ", _ENV),
+    ):
+        main.main(now_utc=now, reminder_mode=True)
+        mock_post.assert_called_once()
+        assert "แจ้งเตือน" in mock_post.call_args[0][1]["content"]
+
+
+def test_reminder_skips_when_match_outside_window():
+    now = datetime(2026, 5, 5, 14, 0, tzinfo=timezone.utc)
+    pl = [{"label": "Arsenal vs Chelsea", "time": "02:45 ICT", "competition": "Premier League", "datetime_utc": _MATCH_DT}]
+    with (
+        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_sessions", return_value=[]),
+        patch("main.post_to_webhook") as mock_post,
+        patch.dict("os.environ", _ENV),
+    ):
+        main.main(now_utc=now, reminder_mode=True)
+        mock_post.assert_not_called()

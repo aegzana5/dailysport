@@ -35,6 +35,7 @@ def fetch_matches(
                     "label": f"{home} vs {away}",
                     "time": time_ict,
                     "competition": competition_name,
+                    "datetime_utc": dt_utc,
                 }
             )
         return matches
