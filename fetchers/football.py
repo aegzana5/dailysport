@@ -36,6 +36,9 @@ def fetch_matches(
                     "time": time_ict,
                     "competition": competition_name,
                     "datetime_utc": dt_utc,
+                    "match_id": m.get("id"),
+                    "home_team": home,
+                    "away_team": away,
                 }
             )
         return matches

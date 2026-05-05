@@ -1,5 +1,5 @@
 from datetime import date
-from formatter import format_embed, format_reminder
+from formatter import format_embed, format_reminder, format_kickoff
 
 _PL = [{"label": "Arsenal vs Chelsea", "time": "19:45 UTC", "competition": "Premier League"}]
 _UCL = [{"label": "PSG vs Barcelona", "time": "20:00 UTC", "competition": "Champions League"}]
@@ -33,6 +33,47 @@ def test_returns_dict_with_content_key():
     result = format_embed({"Premier League": _PL}, date(2026, 5, 5))
     assert "content" in result
     assert isinstance(result["content"], str)
+
+
+def test_format_kickoff_includes_lineup_and_handicap():
+    event = {
+        "competition": "Premier League",
+        "label": "Arsenal vs Chelsea",
+        "time": "02:45 ICT",
+        "home_team": "Arsenal",
+        "away_team": "Chelsea",
+        "home_lineup": ["Raya", "White", "Saliba"],
+        "away_lineup": ["Sanchez", "Gusto", "Chalobah"],
+        "handicap": {
+            "bookmaker": "Bet365",
+            "home": {"name": "Arsenal", "point": -0.5, "price": 1.90},
+            "away": {"name": "Chelsea", "point": 0.5, "price": 1.90},
+        },
+    }
+    result = format_kickoff([event], date(2026, 5, 5))
+    content = result["content"]
+    assert "เตะในอีก 1 ชั่วโมง" in content
+    assert "Arsenal vs Chelsea" in content
+    assert "Raya" in content
+    assert "Sanchez" in content
+    assert "แฮนดิแคป" in content
+    assert "Bet365" in content
+    assert "-0.5" in content
+
+
+def test_format_kickoff_shows_no_lineup_message_when_empty():
+    event = {
+        "competition": "Premier League",
+        "label": "Arsenal vs Chelsea",
+        "time": "02:45 ICT",
+        "home_team": "Arsenal",
+        "away_team": "Chelsea",
+        "home_lineup": [],
+        "away_lineup": [],
+        "handicap": None,
+    }
+    result = format_kickoff([event], date(2026, 5, 5))
+    assert "ยังไม่ประกาศไลน์อัพ" in result["content"]
 
 
 def test_format_reminder_includes_thai_alert_header():
