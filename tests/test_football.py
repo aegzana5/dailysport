@@ -30,7 +30,7 @@ def test_fetch_matches_returns_today_matches():
 
     assert len(result) == 1
     assert result[0]["label"] == "Arsenal vs Chelsea"
-    assert result[0]["time"] == "19:45 UTC"
+    assert result[0]["time"] == "02:45 ICT"
     assert result[0]["competition"] == "Premier League"
 
 

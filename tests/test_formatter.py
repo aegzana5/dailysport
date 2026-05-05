@@ -20,8 +20,8 @@ def test_includes_all_sports_with_matches():
 def test_skips_sport_with_no_matches():
     result = format_embed({"Premier League": _PL}, date(2026, 5, 5))
     content = result["content"]
-    assert "Champions League" not in content
-    assert "Formula 1" not in content
+    assert "แชมเปียนส์ลีก" not in content
+    assert "ฟอร์มูล่า 1" not in content
 
 
 def test_includes_date_in_header():

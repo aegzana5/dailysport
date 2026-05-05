@@ -26,7 +26,7 @@ def test_fetch_sessions_returns_today_sessions():
 
     assert len(result) == 1
     assert result[0]["label"] == "Australia GP — Qualifying"
-    assert result[0]["time"] == "06:00 UTC"
+    assert result[0]["time"] == "13:00 ICT"
     assert result[0]["competition"] == "Formula 1"
 
 
@@ -51,5 +51,4 @@ def test_fetch_sessions_calls_correct_url():
         fetch_sessions(date(2026, 5, 5))
 
     called_url = mock_get.call_args[0][0]
-    assert "date_start>=2026-05-05T00:00:00" in called_url
-    assert "date_start<2026-05-06T00:00:00" in called_url
+    assert "year=2026" in called_url

@@ -1,33 +1,35 @@
 from __future__ import annotations
 
 import requests
-from datetime import date, timedelta
+from datetime import date, datetime, timezone, timedelta
 
 _BASE_URL = "https://api.openf1.org/v1/sessions"
+_ICT = timezone(timedelta(hours=7))
 
 
 def fetch_sessions(today: date | None = None) -> list[dict]:
     if today is None:
         today = date.today()
-    next_day = today + timedelta(days=1)
-    url = (
-        f"{_BASE_URL}"
-        f"?date_start>={today.isoformat()}T00:00:00"
-        f"&date_start<{next_day.isoformat()}T00:00:00"
-    )
+    url = f"{_BASE_URL}?year={today.year}"
     try:
         resp = requests.get(url, timeout=10)
         resp.raise_for_status()
         sessions = []
         for s in resp.json():
+            raw_start = s.get("date_start", "")
+            if not raw_start.startswith(today.isoformat()):
+                continue
             country = s.get("country_name", "Unknown")
             session_type = s.get("session_name", "Session")
-            raw_start = s.get("date_start", "")
-            time_utc = raw_start[11:16] + " UTC" if len(raw_start) >= 16 else "TBC"
+            if len(raw_start) >= 16:
+                dt_utc = datetime.strptime(raw_start[:16], "%Y-%m-%dT%H:%M").replace(tzinfo=timezone.utc)
+                time_ict = dt_utc.astimezone(_ICT).strftime("%H:%M") + " ICT"
+            else:
+                time_ict = "TBC"
             sessions.append(
                 {
                     "label": f"{country} GP — {session_type}",
-                    "time": time_utc,
+                    "time": time_ict,
                     "competition": "Formula 1",
                 }
             )
