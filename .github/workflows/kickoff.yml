@@ -24,7 +24,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Send kickoff alert
-        run: python main.py --kickoff ${{ inputs.force == 'true' && '--force' || '' }}
+        run: python main.py --kickoff ${{ inputs.force && '--force' || '' }}
         env:
           FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
