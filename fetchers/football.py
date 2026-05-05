@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import requests
 from datetime import date
-from typing import Optional
 
 _BASE_URL = "https://api.football-data.org/v4/competitions/{code}/matches"
 
@@ -9,7 +10,7 @@ def fetch_matches(
     api_key: str,
     competition_code: str,
     competition_name: str,
-    today: Optional[date] = None,
+    today: date | None = None,
 ) -> list[dict]:
     if today is None:
         today = date.today()
