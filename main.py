@@ -8,7 +8,9 @@ from fetchers.football import fetch_matches
 from fetchers.f1 import fetch_sessions
 from fetchers.lineup import fetch_lineup
 from fetchers.odds import fetch_handicap
-from formatter import format_embed, format_reminder, format_kickoff
+from fetchers.laolottery import fetch_results as fetch_lottery_results
+from fetchers.laolottery_analyzer import analyze as analyze_lottery
+from formatter import format_embed, format_reminder, format_kickoff, format_lottery
 from discord_webhook import post_to_webhook
 
 _REMINDER_TARGET = timedelta(hours=2)
@@ -27,17 +29,29 @@ def main(
     now_utc: datetime | None = None,
     reminder_mode: bool = False,
     kickoff_mode: bool = False,
+    lottery_mode: bool = False,
 ) -> None:
     if not reminder_mode:
         reminder_mode = "--reminder" in sys.argv
     if not kickoff_mode:
         kickoff_mode = "--kickoff" in sys.argv
+    if not lottery_mode:
+        lottery_mode = "--lottery" in sys.argv
 
-    api_key = os.environ["FOOTBALL_DATA_API_KEY"]
     webhook_url = os.environ["DISCORD_WEBHOOK_URL"]
 
     if now_utc is None:
         now_utc = datetime.now(timezone.utc)
+
+    if lottery_mode:
+        results = fetch_lottery_results()
+        analysis = analyze_lottery(results)
+        payload = format_lottery(analysis, now_utc.date())
+        post_to_webhook(webhook_url, payload)
+        print(f"Posted lottery analysis ({analysis['total_draws']} draws).")
+        return
+
+    api_key = os.environ["FOOTBALL_DATA_API_KEY"]
 
     if kickoff_mode:
         force = "--force" in sys.argv

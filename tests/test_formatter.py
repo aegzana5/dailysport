@@ -1,5 +1,5 @@
 from datetime import date
-from formatter import format_embed, format_reminder, format_kickoff
+from formatter import format_embed, format_reminder, format_kickoff, format_lottery
 
 _PL = [{"label": "Arsenal vs Chelsea", "time": "19:45 UTC", "competition": "Premier League"}]
 _UCL = [{"label": "PSG vs Barcelona", "time": "20:00 UTC", "competition": "Champions League"}]
@@ -91,3 +91,26 @@ def test_multiple_matches_same_sport():
     content = result["content"]
     assert "Arsenal vs Chelsea" in content
     assert "Liverpool vs City" in content
+
+
+def test_format_lottery_shows_hot_cold_suggestions():
+    analysis = {
+        "total_draws": 10,
+        "hot": [{"number": "41", "count": 4}, {"number": "07", "count": 2}],
+        "cold": [{"number": "00", "count": 0}],
+        "due": [{"number": "23", "avg_gap": 3.0, "last_seen": 5}],
+        "suggestions": ["41", "23"],
+    }
+    result = format_lottery(analysis, date(2026, 5, 6))
+    content = result["content"]
+    assert "หวยลาว" in content
+    assert "41" in content
+    assert "00" in content
+    assert "ไม่เคยออก" in content
+    assert "41 • 23" in content
+
+
+def test_format_lottery_empty():
+    analysis = {"total_draws": 0, "hot": [], "cold": [], "due": [], "suggestions": []}
+    result = format_lottery(analysis, date(2026, 5, 6))
+    assert "ไม่มีข้อมูล" in result["content"]

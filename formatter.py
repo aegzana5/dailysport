@@ -62,3 +62,36 @@ def format_kickoff(kickoff_events: list[dict], today: date) -> dict:
         )
         lines.append("")
     return {"content": "\n".join(lines).strip()}
+
+
+def format_lottery(analysis: dict, today: date) -> dict:
+    if analysis["total_draws"] == 0:
+        return {"content": f"**🎱 หวยลาว — {today.isoformat()}**\nไม่มีข้อมูล"}
+    hot = analysis["hot"]
+    cold = analysis["cold"]
+    due = analysis["due"]
+    suggestions = analysis["suggestions"]
+    lines = [
+        f"**🎱 วิเคราะห์หวยลาว (2 ตัวล่าง) — {today.isoformat()}**",
+        f"จำนวนงวดในฐานข้อมูล: {analysis['total_draws']} งวด",
+        "",
+    ]
+    if hot:
+        lines.append("🔥 **เลขร้อน (ออกบ่อย)**")
+        for h in hot:
+            lines.append(f"  {h['number']} — {h['count']} ครั้ง")
+        lines.append("")
+    if cold:
+        lines.append("🧊 **เลขเย็น (ออกน้อย/ไม่เคยออก)**")
+        for c in cold:
+            label = "ไม่เคยออก" if c["count"] == 0 else f"{c['count']} ครั้ง"
+            lines.append(f"  {c['number']} — {label}")
+        lines.append("")
+    if due:
+        lines.append("⏰ **เลขค้าง (ถึงรอบออกแล้ว)**")
+        for d in due:
+            lines.append(f"  {d['number']} — เฉลี่ยทุก {d['avg_gap']:.1f} งวด, ห่างมาแล้ว {d['last_seen']} งวด")
+        lines.append("")
+    if suggestions:
+        lines.append(f"✨ **แนะนำ**: {' • '.join(suggestions)}")
+    return {"content": "\n".join(lines).strip()}

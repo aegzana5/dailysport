@@ -117,3 +117,33 @@ def test_kickoff_skips_when_no_matches_in_window():
     ):
         main.main(now_utc=now, kickoff_mode=True)
         mock_post.assert_not_called()
+
+
+def test_lottery_mode_posts_analysis():
+    _analysis = {
+        "total_draws": 10,
+        "hot": [{"number": "41", "count": 4}],
+        "cold": [{"number": "00", "count": 0}],
+        "due": [],
+        "suggestions": ["41"],
+    }
+    with (
+        patch("main.fetch_lottery_results", return_value=[{"two_digit": "41"}]),
+        patch("main.analyze_lottery", return_value=_analysis),
+        patch("main.post_to_webhook") as mock_post,
+        patch.dict("os.environ", _ENV),
+    ):
+        main.main(lottery_mode=True)
+        mock_post.assert_called_once()
+        assert "หวยลาว" in mock_post.call_args[0][1]["content"]
+
+
+def test_lottery_mode_no_football_api_key_needed():
+    _analysis = {"total_draws": 0, "hot": [], "cold": [], "due": [], "suggestions": []}
+    with (
+        patch("main.fetch_lottery_results", return_value=[]),
+        patch("main.analyze_lottery", return_value=_analysis),
+        patch("main.post_to_webhook"),
+        patch.dict("os.environ", {"DISCORD_WEBHOOK_URL": "https://hook"}, clear=True),
+    ):
+        main.main(lottery_mode=True)  # should not raise KeyError for FOOTBALL_DATA_API_KEY
