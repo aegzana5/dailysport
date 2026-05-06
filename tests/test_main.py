@@ -149,13 +149,12 @@ def test_lottery_mode_no_football_api_key_needed():
         main.main(lottery_mode=True)  # should not raise KeyError for FOOTBALL_DATA_API_KEY
 
 
-def test_combined_mode_posts_once():
+def test_combined_mode_no_matches_posts_text():
     _analysis = {
         "total_draws": 5, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": [],
     }
-    pl = [{"label": "Arsenal vs Chelsea", "time": "19:45 UTC", "competition": "Premier League"}]
     with (
-        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_matches", return_value=[]),
         patch("main.fetch_sessions", return_value=[]),
         patch("main.fetch_lottery_results", return_value=[]),
         patch("main.analyze_lottery", return_value=_analysis),
@@ -165,5 +164,29 @@ def test_combined_mode_posts_once():
         main.main(combined_mode=True)
         mock_post.assert_called_once()
         content = mock_post.call_args[0][1]["content"]
-        assert "ตารางกีฬาวันนี้" in content
         assert "หวยลาว" in content
+
+
+def test_combined_mode_with_matches_posts_image():
+    _analysis = {
+        "total_draws": 5, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": [],
+    }
+    pl = [{"label": "Arsenal vs Chelsea", "time": "19:45 ICT", "competition": "Premier League"}]
+    fake_img = b"PNG_BYTES"
+    with (
+        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_sessions", return_value=[]),
+        patch("main.fetch_lottery_results", return_value=[]),
+        patch("main.analyze_lottery", return_value=_analysis),
+        patch("main.generate_schedule_image", return_value=fake_img),
+        patch("main.post_with_image") as mock_img_post,
+        patch("main.post_to_webhook") as mock_text_post,
+        patch.dict("os.environ", _ENV),
+    ):
+        main.main(combined_mode=True)
+        mock_img_post.assert_called_once()
+        mock_text_post.assert_not_called()
+        payload = mock_img_post.call_args[0][1]
+        assert "ตารางกีฬาวันนี้" in payload["content"]
+        assert "หวยลาว" in payload["content"]
+        assert mock_img_post.call_args[0][2] == fake_img

@@ -11,7 +11,8 @@ from fetchers.odds import fetch_handicap
 from fetchers.laolottery import fetch_results as fetch_lottery_results
 from fetchers.laolottery_analyzer import analyze as analyze_lottery
 from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined
-from discord_webhook import post_to_webhook
+from image_generator import generate_schedule_image
+from discord_webhook import post_to_webhook, post_with_image
 
 _REMINDER_TARGET = timedelta(hours=2)
 _KICKOFF_TARGET = timedelta(hours=1)
@@ -71,8 +72,16 @@ def main(
         lottery_results = fetch_lottery_results()
         lottery_analysis = analyze_lottery(lottery_results)
         payload = format_combined(matches_by_sport, lottery_analysis, today)
-        post_to_webhook(webhook_url, payload)
         sport_total = sum(len(v) for v in matches_by_sport.values())
+        if matches_by_sport:
+            try:
+                img_bytes = generate_schedule_image(matches_by_sport, today)
+                post_with_image(webhook_url, payload, img_bytes, f"schedule-{today.isoformat()}.png")
+                print(f"Posted combined with image: {sport_total} sport event(s) + lottery ({lottery_analysis['total_draws']} draws).")
+                return
+            except Exception as e:
+                print(f"Warning: image generation failed ({e}), posting text only.")
+        post_to_webhook(webhook_url, payload)
         print(f"Posted combined: {sport_total} sport event(s) + lottery ({lottery_analysis['total_draws']} draws).")
         return
 
