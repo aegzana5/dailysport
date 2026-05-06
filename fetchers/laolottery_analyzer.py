@@ -1,38 +1,38 @@
 """Lao Lottery 2-digit result analyzer."""
 
 from collections import Counter
+from datetime import datetime
+
+
+def _iso_week(date_str: str) -> tuple[int, int]:
+    try:
+        d = datetime.strptime(date_str[:10], "%Y-%m-%d")
+        y, w, _ = d.isocalendar()
+        return (y, w)
+    except Exception:
+        return (0, 0)
 
 
 def analyze(results: list[dict]) -> dict:
-    """Analyze Lao lottery results and return hot/cold/due/suggestions stats.
-
-    Args:
-        results: list of dicts with at least a 'two_digit' key, newest first.
-
-    Returns:
-        dict with keys: total_draws, hot, cold, due, suggestions
-    """
     if not results:
-        return {"total_draws": 0, "hot": [], "cold": [], "due": [], "suggestions": []}
+        return {"total_draws": 0, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": []}
 
     total = len(results)
     digits = [r["two_digit"] for r in results]
     all_numbers = [f"{i:02d}" for i in range(100)]
 
-    # Frequency counts
     freq = Counter(digits)
 
-    # --- HOT: top 5 by frequency, ties broken ascending ---
+    # --- HOT ---
     hot_sorted = sorted(freq.items(), key=lambda x: (-x[1], x[0]))
     hot = [{"number": n, "count": c} for n, c in hot_sorted[:5]]
 
-    # --- COLD: 5 least frequent (prefer count=0 first), ties broken ascending ---
+    # --- COLD ---
     full_freq = {n: freq.get(n, 0) for n in all_numbers}
     cold_sorted = sorted(full_freq.items(), key=lambda x: (x[1], x[0]))
     cold = [{"number": n, "count": c} for n, c in cold_sorted[:5]]
 
-    # --- DUE: numbers where last_seen > avg_gap ---
-    # Build position lists (index 0 = most recent draw)
+    # --- DUE ---
     positions: dict[str, list[int]] = {}
     for idx, num in enumerate(digits):
         positions.setdefault(num, []).append(idx)
@@ -40,13 +40,10 @@ def analyze(results: list[dict]) -> dict:
     due_candidates = []
     for num, pos_list in positions.items():
         if len(pos_list) < 2:
-            # Only one appearance — no gaps to compute avg from, skip
             continue
-        # Gaps between consecutive appearances (positions are already sorted asc
-        # because we iterate digits newest-first, so pos_list is ascending)
         gaps = [pos_list[i + 1] - pos_list[i] for i in range(len(pos_list) - 1)]
         avg_gap = sum(gaps) / len(gaps)
-        last_seen = pos_list[0]  # smallest index = most recent
+        last_seen = pos_list[0]
         if last_seen > avg_gap:
             due_candidates.append({
                 "number": num,
@@ -61,7 +58,17 @@ def analyze(results: list[dict]) -> dict:
         for d in due_candidates[:5]
     ]
 
-    # --- SUGGESTIONS: top-3 hot + top-3 due, deduped, hot first ---
+    # --- WEEKLY AVERAGE ---
+    weeks = {_iso_week(r.get("date", "")) for r in results}
+    weeks.discard((0, 0))
+    num_weeks = max(len(weeks), 1)
+    weekly_sorted = sorted(freq.items(), key=lambda x: (-x[1], x[0]))
+    weekly_avg = [
+        {"number": n, "count": c, "avg_per_week": round(c / num_weeks, 1)}
+        for n, c in weekly_sorted[:5]
+    ]
+
+    # --- SUGGESTIONS: top-3 hot + top-5 due, deduped, up to 5 ---
     seen: set[str] = set()
     suggestions: list[str] = []
     for entry in hot[:3]:
@@ -69,9 +76,9 @@ def analyze(results: list[dict]) -> dict:
         if n not in seen:
             seen.add(n)
             suggestions.append(n)
-    for entry in due[:3]:
+    for entry in due[:5]:
         n = entry["number"]
-        if n not in seen:
+        if n not in seen and len(suggestions) < 5:
             seen.add(n)
             suggestions.append(n)
 
@@ -80,5 +87,6 @@ def analyze(results: list[dict]) -> dict:
         "hot": hot,
         "cold": cold,
         "due": due,
+        "weekly_avg": weekly_avg,
         "suggestions": suggestions,
     }

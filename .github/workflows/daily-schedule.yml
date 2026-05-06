@@ -1,9 +1,8 @@
 name: Daily Sports Schedule
-# daily schedule bot
 
 on:
   schedule:
-    - cron: "0 7 * * *"
+    - cron: "0 5 * * *"  # 12:00 ICT — combined sports + lottery
   workflow_dispatch:
 
 jobs:
@@ -19,8 +18,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Post schedule to Discord
-        run: python main.py
+      - name: Post combined schedule to Discord
+        run: python main.py --combined
         env:
           FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

@@ -139,7 +139,7 @@ def test_lottery_mode_posts_analysis():
 
 
 def test_lottery_mode_no_football_api_key_needed():
-    _analysis = {"total_draws": 0, "hot": [], "cold": [], "due": [], "suggestions": []}
+    _analysis = {"total_draws": 0, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": []}
     with (
         patch("main.fetch_lottery_results", return_value=[]),
         patch("main.analyze_lottery", return_value=_analysis),
@@ -147,3 +147,23 @@ def test_lottery_mode_no_football_api_key_needed():
         patch.dict("os.environ", {"DISCORD_WEBHOOK_URL": "https://hook"}, clear=True),
     ):
         main.main(lottery_mode=True)  # should not raise KeyError for FOOTBALL_DATA_API_KEY
+
+
+def test_combined_mode_posts_once():
+    _analysis = {
+        "total_draws": 5, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": [],
+    }
+    pl = [{"label": "Arsenal vs Chelsea", "time": "19:45 UTC", "competition": "Premier League"}]
+    with (
+        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_sessions", return_value=[]),
+        patch("main.fetch_lottery_results", return_value=[]),
+        patch("main.analyze_lottery", return_value=_analysis),
+        patch("main.post_to_webhook") as mock_post,
+        patch.dict("os.environ", _ENV),
+    ):
+        main.main(combined_mode=True)
+        mock_post.assert_called_once()
+        content = mock_post.call_args[0][1]["content"]
+        assert "ตารางกีฬาวันนี้" in content
+        assert "หวยลาว" in content

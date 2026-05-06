@@ -10,7 +10,7 @@ from fetchers.lineup import fetch_lineup
 from fetchers.odds import fetch_handicap
 from fetchers.laolottery import fetch_results as fetch_lottery_results
 from fetchers.laolottery_analyzer import analyze as analyze_lottery
-from formatter import format_embed, format_reminder, format_kickoff, format_lottery
+from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined
 from discord_webhook import post_to_webhook
 
 _REMINDER_TARGET = timedelta(hours=2)
@@ -30,6 +30,7 @@ def main(
     reminder_mode: bool = False,
     kickoff_mode: bool = False,
     lottery_mode: bool = False,
+    combined_mode: bool = False,
 ) -> None:
     if not reminder_mode:
         reminder_mode = "--reminder" in sys.argv
@@ -37,6 +38,8 @@ def main(
         kickoff_mode = "--kickoff" in sys.argv
     if not lottery_mode:
         lottery_mode = "--lottery" in sys.argv
+    if not combined_mode:
+        combined_mode = "--combined" in sys.argv
 
     webhook_url = os.environ["DISCORD_WEBHOOK_URL"]
 
@@ -52,6 +55,26 @@ def main(
         return
 
     api_key = os.environ["FOOTBALL_DATA_API_KEY"]
+
+    if combined_mode:
+        today = now_utc.date()
+        pl = fetch_matches(api_key, "PL", "Premier League", today)
+        ucl = fetch_matches(api_key, "CL", "Champions League", today)
+        f1 = fetch_sessions(today)
+        matches_by_sport: dict[str, list[dict]] = {}
+        if pl:
+            matches_by_sport["Premier League"] = pl
+        if ucl:
+            matches_by_sport["Champions League"] = ucl
+        if f1:
+            matches_by_sport["Formula 1"] = f1
+        lottery_results = fetch_lottery_results()
+        lottery_analysis = analyze_lottery(lottery_results)
+        payload = format_combined(matches_by_sport, lottery_analysis, today)
+        post_to_webhook(webhook_url, payload)
+        sport_total = sum(len(v) for v in matches_by_sport.values())
+        print(f"Posted combined: {sport_total} sport event(s) + lottery ({lottery_analysis['total_draws']} draws).")
+        return
 
     if kickoff_mode:
         force = "--force" in sys.argv

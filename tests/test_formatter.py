@@ -1,5 +1,5 @@
 from datetime import date
-from formatter import format_embed, format_reminder, format_kickoff, format_lottery
+from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined
 
 _PL = [{"label": "Arsenal vs Chelsea", "time": "19:45 UTC", "competition": "Premier League"}]
 _UCL = [{"label": "PSG vs Barcelona", "time": "20:00 UTC", "competition": "Champions League"}]
@@ -93,24 +93,42 @@ def test_multiple_matches_same_sport():
     assert "Liverpool vs City" in content
 
 
+_LOTTERY_ANALYSIS = {
+    "total_draws": 10,
+    "hot": [{"number": "41", "count": 4}, {"number": "07", "count": 2}],
+    "cold": [{"number": "00", "count": 0}],
+    "due": [{"number": "23", "avg_gap": 3.0, "last_seen": 5}],
+    "weekly_avg": [{"number": "41", "count": 4, "avg_per_week": 1.3}],
+    "suggestions": ["41", "07", "23", "55", "99"],
+}
+
+
 def test_format_lottery_shows_hot_cold_suggestions():
-    analysis = {
-        "total_draws": 10,
-        "hot": [{"number": "41", "count": 4}, {"number": "07", "count": 2}],
-        "cold": [{"number": "00", "count": 0}],
-        "due": [{"number": "23", "avg_gap": 3.0, "last_seen": 5}],
-        "suggestions": ["41", "23"],
-    }
-    result = format_lottery(analysis, date(2026, 5, 6))
+    result = format_lottery(_LOTTERY_ANALYSIS, date(2026, 5, 6))
     content = result["content"]
     assert "หวยลาว" in content
     assert "41" in content
     assert "00" in content
     assert "ไม่เคยออก" in content
-    assert "41 • 23" in content
+    assert "41 • 07 • 23 • 55 • 99" in content
+
+
+def test_format_lottery_shows_weekly_avg():
+    result = format_lottery(_LOTTERY_ANALYSIS, date(2026, 5, 6))
+    assert "เฉลี่ยต่อสัปดาห์" in result["content"]
+    assert "1.3" in result["content"]
 
 
 def test_format_lottery_empty():
-    analysis = {"total_draws": 0, "hot": [], "cold": [], "due": [], "suggestions": []}
+    analysis = {"total_draws": 0, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": []}
     result = format_lottery(analysis, date(2026, 5, 6))
     assert "ไม่มีข้อมูล" in result["content"]
+
+
+def test_format_combined_includes_sport_and_lottery():
+    result = format_combined({"Premier League": _PL}, _LOTTERY_ANALYSIS, date(2026, 5, 6))
+    content = result["content"]
+    assert "ตารางกีฬาวันนี้" in content
+    assert "Arsenal vs Chelsea" in content
+    assert "หวยลาว" in content
+    assert "41" in content
