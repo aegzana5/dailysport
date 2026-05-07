@@ -35,7 +35,7 @@ def format_reminder(matches_by_sport: dict[str, list[dict]], today: date) -> dic
 def format_kickoff(kickoff_events: list[dict], today: date) -> dict:
     _emoji = {c: e for c, e, _ in _SPORT_ORDER}
     _thai = {c: t for c, _, t in _SPORT_ORDER}
-    lines = [f"**⚽ เตะในอีก 1 ชั่วโมง — {today.isoformat()}**", ""]
+    lines = [f"**⚽ เตะในอีก 30 นาที — {today.isoformat()}**", ""]
     for ev in kickoff_events:
         comp = ev["competition"]
         emoji = _emoji.get(comp, "⚽")
@@ -73,10 +73,19 @@ def _lottery_lines(analysis: dict, today: date) -> list[str]:
     weekly_avg = analysis.get("weekly_avg", [])
     suggestions = analysis["suggestions"]
     lines = [
-        f"**🎱 วิเคราะห์หวยลาว (2 ตัวล่าง) — {today.isoformat()}**",
+        f"**🎱 วิเคราะห์หวยลาว (2 ตัวบน) — {today.isoformat()}**",
         f"จำนวนงวดในฐานข้อมูล: {analysis['total_draws']} งวด",
-        "",
     ]
+    latest = analysis.get("latest")
+    if latest:
+        latest_details = []
+        if latest.get("date"):
+            latest_details.append(latest["date"])
+        if latest.get("time"):
+            latest_details.append(latest["time"])
+        suffix = f" — {' '.join(latest_details)}" if latest_details else ""
+        lines.append(f"🎯 **ผลล่าสุด**: {latest.get('number') or '-'} (2 ตัวบน {latest.get('two_digit') or '??'}){suffix}")
+    lines.append("")
     if hot:
         lines.append("🔥 **เลขร้อน (ออกบ่อย)**")
         for h in hot:

@@ -80,8 +80,8 @@ def test_reminder_skips_when_match_outside_window():
         mock_post.assert_not_called()
 
 
-def test_kickoff_posts_when_match_in_1h_window():
-    now = datetime(2026, 5, 5, 18, 45, tzinfo=timezone.utc)
+def test_kickoff_posts_when_match_in_30m_window():
+    now = datetime(2026, 5, 5, 19, 15, tzinfo=timezone.utc)
     pl = [{
         "label": "Arsenal vs Chelsea", "time": "02:45 ICT",
         "competition": "Premier League", "datetime_utc": _MATCH_DT,
@@ -97,7 +97,7 @@ def test_kickoff_posts_when_match_in_1h_window():
     ):
         main.main(now_utc=now, kickoff_mode=True)
         mock_post.assert_called_once()
-        assert "เตะในอีก 1 ชั่วโมง" in mock_post.call_args[0][1]["content"]
+        assert "เตะในอีก 30 นาที" in mock_post.call_args[0][1]["content"]
 
 
 def test_kickoff_skips_when_no_matches_in_window():
@@ -107,6 +107,71 @@ def test_kickoff_skips_when_no_matches_in_window():
         "competition": "Premier League", "datetime_utc": _MATCH_DT,
         "match_id": 1, "home_team": "Arsenal", "away_team": "Chelsea",
     }]
+    _ODDS_ENV = {**_ENV, "ODDS_API_KEY": "odds-key"}
+    with (
+        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_lineup", return_value=([], [])),
+        patch("main.fetch_handicap", return_value=None),
+        patch("main.post_to_webhook") as mock_post,
+        patch.dict("os.environ", _ODDS_ENV),
+    ):
+        main.main(now_utc=now, kickoff_mode=True)
+        mock_post.assert_not_called()
+
+
+def test_kickoff_posts_only_first_match_slot():
+    now = datetime(2026, 5, 5, 19, 15, tzinfo=timezone.utc)
+    same_slot = datetime(2026, 5, 5, 19, 45, tzinfo=timezone.utc)
+    later_slot = datetime(2026, 5, 5, 20, 45, tzinfo=timezone.utc)
+    pl = [
+        {
+            "label": "Arsenal vs Chelsea", "time": "02:45 ICT",
+            "competition": "Premier League", "datetime_utc": same_slot,
+            "match_id": 1, "home_team": "Arsenal", "away_team": "Chelsea",
+        },
+        {
+            "label": "Liverpool vs City", "time": "02:45 ICT",
+            "competition": "Premier League", "datetime_utc": same_slot,
+            "match_id": 2, "home_team": "Liverpool", "away_team": "City",
+        },
+        {
+            "label": "Spurs vs United", "time": "03:45 ICT",
+            "competition": "Premier League", "datetime_utc": later_slot,
+            "match_id": 3, "home_team": "Spurs", "away_team": "United",
+        },
+    ]
+    _ODDS_ENV = {**_ENV, "ODDS_API_KEY": "odds-key"}
+    with (
+        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_lineup", return_value=([], [])),
+        patch("main.fetch_handicap", return_value=None),
+        patch("main.post_to_webhook") as mock_post,
+        patch.dict("os.environ", _ODDS_ENV),
+    ):
+        main.main(now_utc=now, kickoff_mode=True)
+        mock_post.assert_called_once()
+        content = mock_post.call_args[0][1]["content"]
+        assert "Arsenal vs Chelsea" in content
+        assert "Liverpool vs City" in content
+        assert "Spurs vs United" not in content
+
+
+def test_kickoff_skips_when_first_match_is_not_in_window_even_if_later_match_is():
+    now = datetime(2026, 5, 5, 19, 15, tzinfo=timezone.utc)
+    early_slot = datetime(2026, 5, 5, 18, 0, tzinfo=timezone.utc)
+    later_slot = datetime(2026, 5, 5, 19, 45, tzinfo=timezone.utc)
+    pl = [
+        {
+            "label": "Early Match", "time": "01:00 ICT",
+            "competition": "Premier League", "datetime_utc": early_slot,
+            "match_id": 1, "home_team": "Early", "away_team": "Team",
+        },
+        {
+            "label": "Later Match", "time": "02:45 ICT",
+            "competition": "Premier League", "datetime_utc": later_slot,
+            "match_id": 2, "home_team": "Later", "away_team": "Team",
+        },
+    ]
     _ODDS_ENV = {**_ENV, "ODDS_API_KEY": "odds-key"}
     with (
         patch("main.fetch_matches", side_effect=[pl, []]),
@@ -149,27 +214,37 @@ def test_lottery_mode_no_football_api_key_needed():
         main.main(lottery_mode=True)  # should not raise KeyError for FOOTBALL_DATA_API_KEY
 
 
-def test_combined_mode_no_matches_posts_text():
+def test_combined_mode_no_matches_posts_image_only():
     _analysis = {
         "total_draws": 5, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": [],
     }
+    fake_img = b"PNG_BYTES"
     with (
         patch("main.fetch_matches", return_value=[]),
         patch("main.fetch_sessions", return_value=[]),
         patch("main.fetch_lottery_results", return_value=[]),
         patch("main.analyze_lottery", return_value=_analysis),
-        patch("main.post_to_webhook") as mock_post,
+        patch("main.generate_schedule_image", return_value=fake_img),
+        patch("main.post_with_image") as mock_img_post,
+        patch("main.post_to_webhook") as mock_text_post,
         patch.dict("os.environ", _ENV),
     ):
         main.main(combined_mode=True)
-        mock_post.assert_called_once()
-        content = mock_post.call_args[0][1]["content"]
-        assert "หวยลาว" in content
+        mock_img_post.assert_called_once()
+        mock_text_post.assert_not_called()
+        assert mock_img_post.call_args[0][1] == {}
+        assert mock_img_post.call_args[0][2] == fake_img
 
 
 def test_combined_mode_with_matches_posts_image():
     _analysis = {
-        "total_draws": 5, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": [],
+        "total_draws": 5,
+        "latest": {"date": "2026-05-06", "time": "", "number": "12341", "two_digit": "41"},
+        "hot": [],
+        "cold": [],
+        "due": [],
+        "weekly_avg": [],
+        "suggestions": [],
     }
     pl = [{"label": "Arsenal vs Chelsea", "time": "19:45 ICT", "competition": "Premier League"}]
     fake_img = b"PNG_BYTES"
@@ -187,6 +262,5 @@ def test_combined_mode_with_matches_posts_image():
         mock_img_post.assert_called_once()
         mock_text_post.assert_not_called()
         payload = mock_img_post.call_args[0][1]
-        assert "ตารางกีฬาวันนี้" in payload["content"]
-        assert "หวยลาว" in payload["content"]
+        assert payload == {}
         assert mock_img_post.call_args[0][2] == fake_img

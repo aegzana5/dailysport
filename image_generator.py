@@ -12,6 +12,9 @@ _PAD = 24
 _ROW_H = 44
 _SPORT_H = 50
 _HEADER_H = 68
+_SECTION_GAP = 8
+_LOTTERY_HEADER_H = 46
+_LOTTERY_LINE_H = 26
 
 _BG = (30, 31, 34)
 _CARD_BG = (40, 42, 48)
@@ -19,6 +22,7 @@ _ROW_ALT = (35, 36, 40)
 _WHITE = (255, 255, 255)
 _TEXT = (220, 221, 222)
 _MUTED = (148, 155, 164)
+_LOTTERY_ACCENT = (241, 167, 68)
 
 _ACCENT: dict[str, tuple[int, int, int]] = {
     "Premier League": (149, 59, 237),
@@ -28,20 +32,61 @@ _ACCENT: dict[str, tuple[int, int, int]] = {
 _ACCENT_DEFAULT = (80, 85, 95)
 
 _SPORT_LABELS = {
-    "Premier League": "PREMIER LEAGUE",
-    "Champions League": "CHAMPIONS LEAGUE",
-    "Formula 1": "FORMULA 1",
+    "Premier League": "พรีเมียร์ลีก",
+    "Champions League": "ยูฟ่า แชมเปียนส์ลีก",
+    "Formula 1": "ฟอร์มูล่า 1",
 }
+
+
+def _lottery_summary_lines(analysis: dict) -> list[str]:
+    if analysis.get("total_draws", 0) == 0:
+        return ["ไม่มีข้อมูลหวยลาว"]
+
+    latest = analysis.get("latest") or {}
+    lines = [f"ผลล่าสุด: {latest.get('number', '-')}  |  2 ตัว: {latest.get('two_digit', '??')}"]
+    suggestions = analysis.get("suggestions", [])
+    if suggestions:
+        lines.append(f"เลขแนะนำ 5 ตัว: {'  '.join(suggestions[:5])}")
+    hot = analysis.get("hot", [])
+    if hot:
+        lines.append("เลขร้อน: " + "  ".join(f"{item['number']} ({item['count']})" for item in hot[:5]))
+    due = analysis.get("due", [])
+    if due:
+        lines.append("เลขค้าง: " + "  ".join(item["number"] for item in due[:5]))
+    lines.append(f"วิเคราะห์จาก {analysis['total_draws']} งวด")
+    return lines
+
+
+def _text_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> int:
+    bb = draw.textbbox((0, 0), text, font=font)
+    return bb[2] - bb[0]
+
+
+def _truncate_text(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, max_width: int) -> str:
+    if _text_width(draw, text, font) <= max_width:
+        return text
+    candidate = text
+    while candidate and _text_width(draw, candidate + "...", font) > max_width:
+        candidate = candidate[:-1]
+    return (candidate + "...") if candidate else "..."
 
 
 def _font(bold: bool = False, size: int = 16):
     paths = (
         [
+            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+            "/System/Library/Fonts/Supplemental/Tahoma Bold.ttf",
+            "/System/Library/Fonts/Supplemental/Tahoma.ttf",
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+            "/System/Library/Fonts/Supplemental/Arial.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
             "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         ]
         if bold
         else [
+            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+            "/System/Library/Fonts/Supplemental/Tahoma.ttf",
+            "/System/Library/Fonts/Supplemental/Arial.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
         ]
@@ -52,10 +97,12 @@ def _font(bold: bool = False, size: int = 16):
     return ImageFont.load_default()
 
 
-def generate_schedule_image(matches_by_sport: dict[str, list[dict]], today: date) -> bytes:
+def generate_schedule_image(matches_by_sport: dict[str, list[dict]], today: date, lottery_analysis: dict | None = None) -> bytes:
     total_rows = sum(len(m) for m in matches_by_sport.values())
     num_sports = len(matches_by_sport)
-    height = _HEADER_H + _PAD + num_sports * (_SPORT_H + 8) + total_rows * _ROW_H + _PAD
+    lottery_lines = _lottery_summary_lines(lottery_analysis or {"total_draws": 0})
+    lottery_height = _LOTTERY_HEADER_H + len(lottery_lines) * _LOTTERY_LINE_H + _SECTION_GAP
+    height = _HEADER_H + _PAD + num_sports * (_SPORT_H + _SECTION_GAP) + total_rows * _ROW_H + lottery_height + _PAD
 
     img = Image.new("RGB", (_W, height), _BG)
     draw = ImageDraw.Draw(img)
@@ -68,8 +115,8 @@ def generate_schedule_image(matches_by_sport: dict[str, list[dict]], today: date
 
     # Header
     draw.rectangle([0, 0, _W, _HEADER_H], fill=_CARD_BG)
-    draw.text((_PAD, 14), "Sports Schedule", font=f_title, fill=_WHITE)
-    draw.text((_PAD, 42), today.strftime("%A  ·  %d %B %Y"), font=f_sub, fill=_MUTED)
+    draw.text((_PAD, 14), "ตารางกีฬาและหวยลาว", font=f_title, fill=_WHITE)
+    draw.text((_PAD, 42), f"ประจำวันที่ {today.isoformat()}", font=f_sub, fill=_MUTED)
     date_str = today.isoformat()
     bb = draw.textbbox((0, 0), date_str, font=f_sub)
     draw.text((_W - _PAD - (bb[2] - bb[0]), 28), date_str, font=f_sub, fill=_MUTED)
@@ -78,7 +125,7 @@ def generate_schedule_image(matches_by_sport: dict[str, list[dict]], today: date
 
     for sport, matches in matches_by_sport.items():
         color = _ACCENT.get(sport, _ACCENT_DEFAULT)
-        label = _SPORT_LABELS.get(sport, sport.upper())
+        label = _SPORT_LABELS.get(sport, sport)
 
         # Sport header row
         draw.rectangle([0, y, _W, y + _SPORT_H], fill=_CARD_BG)
@@ -90,14 +137,31 @@ def generate_schedule_image(matches_by_sport: dict[str, list[dict]], today: date
             bg = _ROW_ALT if i % 2 == 0 else _BG
             draw.rectangle([0, y, _W, y + _ROW_H], fill=bg)
             draw.rectangle([0, y, 5, y + _ROW_H], fill=color)
-            match_label = match.get("label", "")
+            match_label = _truncate_text(draw, match.get("label", ""), f_match, _W - (_PAD * 2) - 150)
             time_str = match.get("time", "")
             draw.text((_PAD + 10, y + (_ROW_H - 14) // 2), match_label, font=f_match, fill=_TEXT)
             tbb = draw.textbbox((0, 0), time_str, font=f_time)
             draw.text((_W - _PAD - (tbb[2] - tbb[0]), y + (_ROW_H - 14) // 2), time_str, font=f_time, fill=_MUTED)
             y += _ROW_H
 
-        y += 8
+        y += _SECTION_GAP
+
+    draw.rectangle([0, y, _W, y + _LOTTERY_HEADER_H], fill=_CARD_BG)
+    draw.rectangle([0, y, 5, y + _LOTTERY_HEADER_H], fill=_LOTTERY_ACCENT)
+    draw.text((_PAD + 10, y + 14), "หวยลาว", font=f_sport, fill=_LOTTERY_ACCENT)
+    y += _LOTTERY_HEADER_H
+
+    for i, line in enumerate(lottery_lines):
+        bg = _ROW_ALT if i % 2 == 0 else _BG
+        draw.rectangle([0, y, _W, y + _LOTTERY_LINE_H], fill=bg)
+        draw.rectangle([0, y, 5, y + _LOTTERY_LINE_H], fill=_LOTTERY_ACCENT)
+        draw.text(
+            (_PAD + 10, y + 5),
+            _truncate_text(draw, line, f_match, _W - (_PAD * 2) - 10),
+            font=f_match,
+            fill=_TEXT,
+        )
+        y += _LOTTERY_LINE_H
 
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)

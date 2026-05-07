@@ -52,7 +52,7 @@ def test_format_kickoff_includes_lineup_and_handicap():
     }
     result = format_kickoff([event], date(2026, 5, 5))
     content = result["content"]
-    assert "เตะในอีก 1 ชั่วโมง" in content
+    assert "เตะในอีก 30 นาที" in content
     assert "Arsenal vs Chelsea" in content
     assert "Raya" in content
     assert "Sanchez" in content
@@ -95,6 +95,7 @@ def test_multiple_matches_same_sport():
 
 _LOTTERY_ANALYSIS = {
     "total_draws": 10,
+    "latest": {"date": "2026-05-06", "time": "20:30", "number": "12341", "two_digit": "41"},
     "hot": [{"number": "41", "count": 4}, {"number": "07", "count": 2}],
     "cold": [{"number": "00", "count": 0}],
     "due": [{"number": "23", "avg_gap": 3.0, "last_seen": 5}],
@@ -107,6 +108,9 @@ def test_format_lottery_shows_hot_cold_suggestions():
     result = format_lottery(_LOTTERY_ANALYSIS, date(2026, 5, 6))
     content = result["content"]
     assert "หวยลาว" in content
+    assert "2 ตัวบน" in content
+    assert "ผลล่าสุด" in content
+    assert "12341" in content
     assert "41" in content
     assert "00" in content
     assert "ไม่เคยออก" in content
@@ -120,7 +124,7 @@ def test_format_lottery_shows_weekly_avg():
 
 
 def test_format_lottery_empty():
-    analysis = {"total_draws": 0, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": []}
+    analysis = {"total_draws": 0, "latest": None, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": []}
     result = format_lottery(analysis, date(2026, 5, 6))
     assert "ไม่มีข้อมูล" in result["content"]
 

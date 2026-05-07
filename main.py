@@ -15,7 +15,7 @@ from image_generator import generate_schedule_image
 from discord_webhook import post_to_webhook, post_with_image
 
 _REMINDER_TARGET = timedelta(hours=2)
-_KICKOFF_TARGET = timedelta(hours=1)
+_KICKOFF_TARGET = timedelta(minutes=30)
 _REMINDER_WINDOW = timedelta(minutes=15)
 
 
@@ -24,6 +24,13 @@ def _in_window(dt_utc: datetime | None, now_utc: datetime, target: timedelta) ->
         return False
     delta = dt_utc - now_utc
     return (target - _REMINDER_WINDOW) <= delta <= (target + _REMINDER_WINDOW)
+
+
+def _first_match_slot(matches: list[dict]) -> datetime | None:
+    kickoff_times = [match.get("datetime_utc") for match in matches if match.get("datetime_utc") is not None]
+    if not kickoff_times:
+        return None
+    return min(kickoff_times)
 
 
 def main(
@@ -71,18 +78,10 @@ def main(
             matches_by_sport["Formula 1"] = f1
         lottery_results = fetch_lottery_results()
         lottery_analysis = analyze_lottery(lottery_results)
-        payload = format_combined(matches_by_sport, lottery_analysis, today)
         sport_total = sum(len(v) for v in matches_by_sport.values())
-        if matches_by_sport:
-            try:
-                img_bytes = generate_schedule_image(matches_by_sport, today)
-                post_with_image(webhook_url, payload, img_bytes, f"schedule-{today.isoformat()}.png")
-                print(f"Posted combined with image: {sport_total} sport event(s) + lottery ({lottery_analysis['total_draws']} draws).")
-                return
-            except Exception as e:
-                print(f"Warning: image generation failed ({e}), posting text only.")
-        post_to_webhook(webhook_url, payload)
-        print(f"Posted combined: {sport_total} sport event(s) + lottery ({lottery_analysis['total_draws']} draws).")
+        img_bytes = generate_schedule_image(matches_by_sport, today, lottery_analysis)
+        post_with_image(webhook_url, {}, img_bytes, f"schedule-{today.isoformat()}.png")
+        print(f"Posted combined with image: {sport_total} sport event(s) + lottery ({lottery_analysis['total_draws']} draws).")
         return
 
     if kickoff_mode:
@@ -91,15 +90,21 @@ def main(
         fetch_date = now_utc.date() if force else (now_utc + _KICKOFF_TARGET).date()
         pl = fetch_matches(api_key, "PL", "Premier League", fetch_date)
         ucl = fetch_matches(api_key, "CL", "Champions League", fetch_date)
+        day_matches = pl + ucl
+        first_slot = _first_match_slot(day_matches)
+        if not force and (first_slot is None or not _in_window(first_slot, now_utc, _KICKOFF_TARGET)):
+            print("No first-match kickoff alert in 30m window. Skipping.")
+            return
         upcoming = []
-        for match in pl + ucl:
-            if not force and not _in_window(match.get("datetime_utc"), now_utc, _KICKOFF_TARGET):
+        for match in day_matches:
+            match_dt = match.get("datetime_utc")
+            if not force and match_dt != first_slot:
                 continue
             home_lu, away_lu = fetch_lineup(api_key, match["match_id"])
             handicap = fetch_handicap(odds_key, match["competition"], match["home_team"], match["away_team"])
             upcoming.append({**match, "home_lineup": home_lu, "away_lineup": away_lu, "handicap": handicap})
         if not upcoming:
-            print("No matches in 1h kickoff window. Skipping.")
+            print("No matches at first kickoff slot. Skipping.")
             return
         payload = format_kickoff(upcoming, fetch_date)
         post_to_webhook(webhook_url, payload)

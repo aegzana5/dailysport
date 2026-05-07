@@ -1,7 +1,8 @@
 from fetchers.laolottery_analyzer import analyze
 
 _DRAWS = [
-    {"two_digit": "41", "date": "2026-05-05"}, {"two_digit": "07", "date": "2026-05-05"},
+    {"two_digit": "41", "date": "2026-05-05", "time": "20:30", "number": "12341"},
+    {"two_digit": "07", "date": "2026-05-05"},
     {"two_digit": "41", "date": "2026-05-04"}, {"two_digit": "23", "date": "2026-05-04"},
     {"two_digit": "41", "date": "2026-04-28"}, {"two_digit": "07", "date": "2026-04-28"},
     {"two_digit": "99", "date": "2026-04-27"}, {"two_digit": "41", "date": "2026-04-27"},
@@ -18,6 +19,16 @@ def test_hot_top_number():
     r = analyze(_DRAWS)
     assert r["hot"][0]["number"] == "41"
     assert r["hot"][0]["count"] == 4
+
+
+def test_latest_result_uses_newest_draw():
+    r = analyze(_DRAWS)
+    assert r["latest"] == {
+        "date": "2026-05-05",
+        "time": "20:30",
+        "number": "12341",
+        "two_digit": "41",
+    }
 
 
 def test_cold_includes_never_appeared():
@@ -39,6 +50,7 @@ def test_suggestions_up_to_5():
 def test_empty_results():
     r = analyze([])
     assert r["total_draws"] == 0
+    assert r["latest"] is None
     assert r["hot"] == []
     assert r["weekly_avg"] == []
 
