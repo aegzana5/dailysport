@@ -104,8 +104,8 @@ def _lottery_mode_lines(analysis: dict, label: str) -> list[str]:
     if cold:
         lines.append("🧊 **เลขเย็น (ออกน้อย/ไม่เคยออก)**")
         for c in cold:
-            label = "ไม่เคยออก" if c["count"] == 0 else f"{c['count']} ครั้ง"
-            lines.append(f"  {c['number']} — {label}")
+            cold_label = "ไม่เคยออก" if c["count"] == 0 else f"{c['count']} ครั้ง"
+            lines.append(f"  {c['number']} — {cold_label}")
         lines.append("")
     if avg_data:
         lines.append(avg_header)

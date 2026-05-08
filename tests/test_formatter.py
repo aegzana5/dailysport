@@ -1,5 +1,5 @@
 from datetime import date
-from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined
+from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined, format_thailottery
 
 _PL = [{"label": "Arsenal vs Chelsea", "time": "19:45 UTC", "competition": "Premier League"}]
 _UCL = [{"label": "PSG vs Barcelona", "time": "20:00 UTC", "competition": "Champions League"}]
@@ -150,9 +150,6 @@ def test_format_combined_includes_sport_and_lottery():
     assert "Arsenal vs Chelsea" in content
     assert "หวยลาว" in content
     assert "41" in content
-
-
-from formatter import format_thailottery
 
 
 _THAI_ANALYSIS = {
