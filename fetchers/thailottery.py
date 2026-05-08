@@ -8,11 +8,8 @@ import requests
 
 _THAIORC_URL = "https://horoscope.thaiorc.com/lotto/thai/stats/lottery-years10.php"
 _DRAW_LIMIT = 100
-_ROW_RE = re.compile(
-    r"contentID=\d+\">(\d{2})/(\d{2})/(\d{4})</a>.*?"
-    r"<td[^>]*>\s*(\d{6})\s*</td>",
-    re.S,
-)
+_ROW_RE = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S)
+_DATE_RE = re.compile(r'contentID=\d+">(\d{2})/(\d{2})/(\d{4})</a>')
 
 
 def _thaiorc_date_to_iso(day: str, month: str, buddhist_year: str) -> str:
@@ -24,12 +21,23 @@ def _thaiorc_date_to_iso(day: str, month: str, buddhist_year: str) -> str:
 
 def _parse_thaiorc_results(html: str) -> list[dict]:
     results = []
-    for day, month, buddhist_year, prize1 in _ROW_RE.findall(html):
-        results.append({
-            "date": _thaiorc_date_to_iso(day, month, buddhist_year),
-            "prize1": prize1,
-            "two_digit": prize1[-2:],
-        })
+    for row in _ROW_RE.findall(html):
+        date_m = _DATE_RE.search(row)
+        if not date_m:
+            continue
+        day, month, buddhist_year = date_m.groups()
+        td_texts = [
+            re.sub(r"<[^>]+>", "", td).strip()
+            for td in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)
+        ]
+        prize1 = next((t for t in td_texts if re.match(r"^\d{6}$", t)), None)
+        two_digit = next((t for t in reversed(td_texts) if re.match(r"^\d{2}$", t)), None)
+        if prize1 and two_digit:
+            results.append({
+                "date": _thaiorc_date_to_iso(day, month, buddhist_year),
+                "prize1": prize1,
+                "two_digit": two_digit,
+            })
     return results
 
 

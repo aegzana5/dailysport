@@ -14,18 +14,21 @@ def _thaiorc_fixture() -> str:
     <tr>
     <td width="34%" class="bd-bgray bd-lgray bd-rgray pd-t8 pd-b10 stats-title" align="center"><a class="blue-nl16" href="../../../lotto/thai/jackpot.php?contentID=25690502">02/05/2569</a></td>
     <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center" bgcolor="#f1f4f5">536077</td>
-    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center">077</td>
-    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center" bgcolor="#f1f4f5">77</td>
+    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center">267 &nbsp;318</td>
+    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center" bgcolor="#f1f4f5">065 &nbsp;153</td>
+    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center">43</td>
     </tr><tr>
     <td width="34%" class="bd-bgray bd-lgray bd-rgray pd-t8 pd-b10 stats-title" align="center"><a class="blue-nl16" href="../../../lotto/thai/jackpot.php?contentID=25690416">16/04/2569</a></td>
     <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center" bgcolor="#f1f4f5">309612</td>
-    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center">612</td>
-    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center" bgcolor="#f1f4f5">12</td>
+    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center">108 &nbsp;355</td>
+    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center" bgcolor="#f1f4f5">424 &nbsp;868</td>
+    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center">77</td>
     </tr><tr>
     <td width="34%" class="bd-bgray bd-lgray bd-rgray pd-t8 pd-b10 stats-title" align="center"><a class="blue-nl16" href="../../../lotto/thai/jackpot.php?contentID=25690401">01/04/2569</a></td>
     <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center" bgcolor="#f1f4f5">292514</td>
-    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center">514</td>
-    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center" bgcolor="#f1f4f5">14</td>
+    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center">113 &nbsp;406</td>
+    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center" bgcolor="#f1f4f5">098 &nbsp;851</td>
+    <td width="22%" class="bd-bgray bd-rgray pd-t8 pd-b10 stats-title" align="center">47</td>
     </tr>
     """.strip()
 
@@ -36,10 +39,18 @@ def test_thaiorc_date_to_iso_converts_buddhist_year():
 
 def test_parse_thaiorc_results_returns_lottery_rows():
     assert _parse_thaiorc_results(_thaiorc_fixture()) == [
-        {"date": "2026-05-02", "prize1": "536077", "two_digit": "77"},
-        {"date": "2026-04-16", "prize1": "309612", "two_digit": "12"},
-        {"date": "2026-04-01", "prize1": "292514", "two_digit": "14"},
+        {"date": "2026-05-02", "prize1": "536077", "two_digit": "43"},
+        {"date": "2026-04-16", "prize1": "309612", "two_digit": "77"},
+        {"date": "2026-04-01", "prize1": "292514", "two_digit": "47"},
     ]
+
+
+def test_parse_thaiorc_results_two_digit_is_independent_not_derived():
+    # 536077 last-2 = 77, but standalone two_digit = 43
+    results = _parse_thaiorc_results(_thaiorc_fixture())
+    assert results[0]["prize1"] == "536077"
+    assert results[0]["two_digit"] == "43"
+    assert results[0]["two_digit"] != results[0]["prize1"][-2:]
 
 
 def test_parse_thaiorc_results_empty_html():
@@ -59,10 +70,16 @@ def test_collect_thaiorc_results_walks_pages_and_stops_at_limit():
         text="""
         <tr>
         <td><a href="../../../lotto/thai/jackpot.php?contentID=25690316">16/03/2569</a></td>
-        <td>123456</td><td>456</td><td>56</td>
+        <td>123456</td>
+        <td>456 &nbsp;789</td>
+        <td>012 &nbsp;345</td>
+        <td>56</td>
         </tr><tr>
         <td><a href="../../../lotto/thai/jackpot.php?contentID=25690301">01/03/2569</a></td>
-        <td>654321</td><td>321</td><td>21</td>
+        <td>654321</td>
+        <td>321 &nbsp;654</td>
+        <td>987 &nbsp;012</td>
+        <td>21</td>
         </tr>
         """.strip(),
         apparent_encoding="cp874",
@@ -72,6 +89,7 @@ def test_collect_thaiorc_results_walks_pages_and_stops_at_limit():
     with patch("fetchers.thailottery.requests.get", side_effect=[page1, page2]) as mock_get:
         results = _collect_thaiorc_results(limit=4)
     assert [r["date"] for r in results] == ["2026-05-02", "2026-04-16", "2026-04-01", "2026-03-16"]
+    assert results[0]["two_digit"] == "43"
     assert mock_get.call_args_list[0].args == ("https://horoscope.thaiorc.com/lotto/thai/stats/lottery-years10.php",)
     assert mock_get.call_args_list[1].args == ("https://horoscope.thaiorc.com/lotto/thai/stats/lottery-years10.php?pg=2",)
 
@@ -90,10 +108,10 @@ def test_collect_thaiorc_results_stops_on_empty_page():
 
 
 def test_fetch_results_uses_100_draw_collector():
-    with patch("fetchers.thailottery._collect_thaiorc_results", return_value=[{"date": "2026-05-02", "prize1": "536077", "two_digit": "77"}]) as mock_collect:
+    with patch("fetchers.thailottery._collect_thaiorc_results", return_value=[{"date": "2026-05-02", "prize1": "536077", "two_digit": "43"}]) as mock_collect:
         results = fetch_results()
     mock_collect.assert_called_once_with(limit=100)
-    assert results[0]["prize1"] == "536077"
+    assert results[0]["two_digit"] == "43"
 
 
 def test_fetch_results_returns_empty_on_exception():
