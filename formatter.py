@@ -64,16 +64,25 @@ def format_kickoff(kickoff_events: list[dict], today: date) -> dict:
     return {"content": "\n".join(lines).strip()}
 
 
-def _lottery_lines(analysis: dict, today: date) -> list[str]:
+def _lottery_mode_lines(analysis: dict, label: str) -> list[str]:
     if analysis["total_draws"] == 0:
-        return [f"**🎱 หวยลาว — {today.isoformat()}**", "ไม่มีข้อมูล"]
+        return [f"**{label}**", "ไม่มีข้อมูล", ""]
     hot = analysis["hot"]
     cold = analysis["cold"]
     due = analysis["due"]
-    weekly_avg = analysis.get("weekly_avg", [])
+    if analysis.get("monthly_avg") is not None:
+        avg_data = analysis.get("monthly_avg", [])
+        avg_header = "📅 **เฉลี่ยต่อเดือน**"
+        avg_val_key = "avg_per_month"
+        avg_unit = "ครั้ง/เดือน"
+    else:
+        avg_data = analysis.get("weekly_avg", [])
+        avg_header = "📅 **เฉลี่ยต่อสัปดาห์**"
+        avg_val_key = "avg_per_week"
+        avg_unit = "ครั้ง/สัปดาห์"
     suggestions = analysis["suggestions"]
     lines = [
-        f"**🎱 วิเคราะห์หวยลาว (2 ตัวบน) — {today.isoformat()}**",
+        f"**{label}**",
         f"จำนวนงวดในฐานข้อมูล: {analysis['total_draws']} งวด",
     ]
     latest = analysis.get("latest")
@@ -84,7 +93,8 @@ def _lottery_lines(analysis: dict, today: date) -> list[str]:
         if latest.get("time"):
             latest_details.append(latest["time"])
         suffix = f" — {' '.join(latest_details)}" if latest_details else ""
-        lines.append(f"🎯 **ผลล่าสุด**: {latest.get('number') or '-'} (2 ตัวบน {latest.get('two_digit') or '??'}){suffix}")
+        prize_num = latest.get("number") or latest.get("prize1") or "-"
+        lines.append(f"🎯 **ผลล่าสุด**: {prize_num} ({label} {latest.get('two_digit') or '??'}){suffix}")
     lines.append("")
     if hot:
         lines.append("🔥 **เลขร้อน (ออกบ่อย)**")
@@ -97,10 +107,10 @@ def _lottery_lines(analysis: dict, today: date) -> list[str]:
             label = "ไม่เคยออก" if c["count"] == 0 else f"{c['count']} ครั้ง"
             lines.append(f"  {c['number']} — {label}")
         lines.append("")
-    if weekly_avg:
-        lines.append("📅 **เฉลี่ยต่อสัปดาห์**")
-        for w in weekly_avg:
-            lines.append(f"  {w['number']} — {w['avg_per_week']:.1f} ครั้ง/สัปดาห์")
+    if avg_data:
+        lines.append(avg_header)
+        for w in avg_data:
+            lines.append(f"  {w['number']} — {w[avg_val_key]:.1f} {avg_unit}")
         lines.append("")
     if due:
         lines.append("⏰ **เลขค้าง (ถึงรอบออกแล้ว)**")
@@ -109,11 +119,40 @@ def _lottery_lines(analysis: dict, today: date) -> list[str]:
         lines.append("")
     if suggestions:
         lines.append(f"✨ **แนะนำ**: {' • '.join(suggestions)}")
+    lines.append("")
+    return lines
+
+
+def _lottery_lines(analysis: dict, today: date) -> list[str]:
+    if "lower" not in analysis and "upper" not in analysis:
+        analysis = {"lower": analysis}
+
+    if not analysis.get("lower") and not analysis.get("upper"):
+        return [f"**🎱 หวยลาว — {today.isoformat()}**", "ไม่มีข้อมูล"]
+
+    lines = [f"**🎱 วิเคราะห์หวยลาว — {today.isoformat()}**", ""]
+    if analysis.get("lower"):
+        lines.extend(_lottery_mode_lines(analysis["lower"], "2 ตัวล่าง"))
+    if analysis.get("upper"):
+        lines.extend(_lottery_mode_lines(analysis["upper"], "2 ตัวบน"))
+    while lines and lines[-1] == "":
+        lines.pop()
     return lines
 
 
 def format_lottery(analysis: dict, today: date) -> dict:
     return {"content": "\n".join(_lottery_lines(analysis, today)).strip()}
+
+
+def format_thailottery(analysis: dict, today: date) -> dict:
+    if not analysis.get("total_draws"):
+        lines = [f"**🎰 วิเคราะห์หวยไทย — {today.isoformat()}**", "ไม่มีข้อมูล"]
+    else:
+        lines = [f"**🎰 วิเคราะห์หวยไทย — {today.isoformat()}**", ""]
+        lines.extend(_lottery_mode_lines(analysis, "2 ตัวล่าง"))
+    while lines and lines[-1] == "":
+        lines.pop()
+    return {"content": "\n".join(lines).strip()}
 
 
 def format_combined(matches_by_sport: dict[str, list[dict]], lottery_analysis: dict, today: date) -> dict:

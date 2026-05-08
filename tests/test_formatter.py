@@ -93,7 +93,7 @@ def test_multiple_matches_same_sport():
     assert "Liverpool vs City" in content
 
 
-_LOTTERY_ANALYSIS = {
+_LOWER_ANALYSIS = {
     "total_draws": 10,
     "latest": {"date": "2026-05-06", "time": "20:30", "number": "12341", "two_digit": "41"},
     "hot": [{"number": "41", "count": 4}, {"number": "07", "count": 2}],
@@ -103,15 +103,29 @@ _LOTTERY_ANALYSIS = {
     "suggestions": ["41", "07", "23", "55", "99"],
 }
 
+_UPPER_ANALYSIS = {
+    "total_draws": 10,
+    "latest": {"date": "2026-05-06", "time": "20:30", "number": "12341", "two_digit": "31"},
+    "hot": [{"number": "31", "count": 3}, {"number": "17", "count": 2}],
+    "cold": [{"number": "00", "count": 0}],
+    "due": [{"number": "52", "avg_gap": 2.0, "last_seen": 4}],
+    "weekly_avg": [{"number": "31", "count": 3, "avg_per_week": 1.0}],
+    "suggestions": ["31", "17", "52", "88", "90"],
+}
+
+_LOTTERY_ANALYSIS = {"lower": _LOWER_ANALYSIS, "upper": _UPPER_ANALYSIS}
+
 
 def test_format_lottery_shows_hot_cold_suggestions():
     result = format_lottery(_LOTTERY_ANALYSIS, date(2026, 5, 6))
     content = result["content"]
     assert "หวยลาว" in content
+    assert "2 ตัวล่าง" in content
     assert "2 ตัวบน" in content
     assert "ผลล่าสุด" in content
     assert "12341" in content
     assert "41" in content
+    assert "31" in content
     assert "00" in content
     assert "ไม่เคยออก" in content
     assert "41 • 07 • 23 • 55 • 99" in content
@@ -124,7 +138,7 @@ def test_format_lottery_shows_weekly_avg():
 
 
 def test_format_lottery_empty():
-    analysis = {"total_draws": 0, "latest": None, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": []}
+    analysis = {"lower": {"total_draws": 0, "latest": None, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": []}}
     result = format_lottery(analysis, date(2026, 5, 6))
     assert "ไม่มีข้อมูล" in result["content"]
 
@@ -136,3 +150,47 @@ def test_format_combined_includes_sport_and_lottery():
     assert "Arsenal vs Chelsea" in content
     assert "หวยลาว" in content
     assert "41" in content
+
+
+from formatter import format_thailottery
+
+
+_THAI_ANALYSIS = {
+    "total_draws": 100,
+    "latest": {"date": "2025-12-16", "prize1": "123456", "two_digit": "56"},
+    "hot": [{"number": "56", "count": 8}],
+    "cold": [{"number": "00", "count": 0}],
+    "due": [{"number": "12", "avg_gap": 4.2, "last_seen": 7}],
+    "monthly_avg": [{"number": "56", "count": 8, "avg_per_month": 1.6}],
+    "suggestions": ["56", "12"],
+}
+
+
+def test_format_thailottery_has_thai_header():
+    payload = format_thailottery(_THAI_ANALYSIS, date(2025, 12, 16))
+    assert "หวยไทย" in payload["content"]
+
+
+def test_format_thailottery_shows_prize1():
+    payload = format_thailottery(_THAI_ANALYSIS, date(2025, 12, 16))
+    assert "123456" in payload["content"]
+
+
+def test_format_thailottery_shows_suggestions():
+    payload = format_thailottery(_THAI_ANALYSIS, date(2025, 12, 16))
+    assert "56" in payload["content"]
+
+
+def test_format_thailottery_shows_monthly_avg():
+    payload = format_thailottery(_THAI_ANALYSIS, date(2025, 12, 16))
+    assert "เดือน" in payload["content"]
+
+
+def test_format_thailottery_empty_analysis():
+    empty = {
+        "total_draws": 0, "latest": None,
+        "hot": [], "cold": [], "due": [], "monthly_avg": [], "suggestions": [],
+    }
+    payload = format_thailottery(empty, date(2025, 12, 16))
+    assert "หวยไทย" in payload["content"]
+    assert "ไม่มีข้อมูล" in payload["content"]
