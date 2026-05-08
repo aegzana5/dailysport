@@ -53,7 +53,7 @@ def test_parse_sanook_page_no_match():
 
 
 def test_parse_sanook_page_ignores_non_six_digit():
-    html = "<div>รางวัลที่ 1</div><div>123456</div><div>999</div>"
+    html = "<div>รางวัลที่ 1</div><div>999</div><div>123456</div>"
     result = _parse_sanook_page(html)
     assert result["prize1"] == "123456"
 

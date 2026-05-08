@@ -9,7 +9,7 @@ import requests
 
 _BASE_URL = "https://news.sanook.com/lotto/check/{date}/"
 _DRAW_LIMIT = 100
-_PRIZE1_RE = re.compile(r"รางวัลที่\s*1[^0-9]*?(\d{6})", re.S)
+_PRIZE1_RE = re.compile(r"รางวัลที่\s*1[\s\S]*?(\d{6})", re.S)
 
 
 def _latest_draw_date(today: date | None = None) -> date:
