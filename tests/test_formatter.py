@@ -155,6 +155,7 @@ def test_format_combined_includes_sport_and_lottery():
 _THAI_ANALYSIS = {
     "total_draws": 100,
     "latest": {"date": "2025-12-16", "prize1": "123456", "two_digit": "56"},
+    "recent_two_digits": ["43", "77", "47", "64", "06"],
     "hot": [{"number": "56", "count": 8}],
     "cold": [{"number": "00", "count": 0}],
     "due": [{"number": "12", "avg_gap": 4.2, "last_seen": 7}],
@@ -168,9 +169,10 @@ def test_format_thailottery_has_thai_header():
     assert "หวยไทย" in payload["content"]
 
 
-def test_format_thailottery_shows_prize1():
+def test_format_thailottery_shows_recent_two_digits():
     payload = format_thailottery(_THAI_ANALYSIS, date(2025, 12, 16))
-    assert "123456" in payload["content"]
+    assert "43 • 77 • 47 • 64 • 06" in payload["content"]
+    assert "123456" not in payload["content"]
 
 
 def test_format_thailottery_shows_suggestions():

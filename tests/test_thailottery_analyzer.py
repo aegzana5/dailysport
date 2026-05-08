@@ -71,3 +71,13 @@ def test_due_only_has_seen_numbers():
     r = analyze(_DRAWS)
     seen = {"56", "21"}
     assert all(d["number"] in seen for d in r["due"])
+
+
+def test_recent_two_digits_returns_last_five():
+    r = analyze(_DRAWS)
+    assert r["recent_two_digits"] == ["56", "21", "56", "56", "21"]
+
+
+def test_recent_two_digits_empty_on_no_results():
+    r = analyze([])
+    assert r["recent_two_digits"] == []

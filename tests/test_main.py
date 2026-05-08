@@ -255,6 +255,7 @@ def test_thailottery_mode_posts_analysis():
     _analysis = {
         "total_draws": 100,
         "latest": {"date": "2025-12-16", "prize1": "123456", "two_digit": "56"},
+        "recent_two_digits": ["56"],
         "hot": [{"number": "56", "count": 8}],
         "cold": [{"number": "00", "count": 0}],
         "due": [],
@@ -276,6 +277,7 @@ def test_thailottery_mode_no_football_api_key_needed():
     _analysis = {
         "total_draws": 0, "latest": None,
         "hot": [], "cold": [], "due": [], "monthly_avg": [], "suggestions": [],
+        "recent_two_digits": [],
     }
     with (
         patch("main.fetch_thai_results", return_value=[]),

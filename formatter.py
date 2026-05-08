@@ -93,8 +93,12 @@ def _lottery_mode_lines(analysis: dict, label: str) -> list[str]:
         if latest.get("time"):
             latest_details.append(latest["time"])
         suffix = f" — {' '.join(latest_details)}" if latest_details else ""
-        prize_num = latest.get("number") or latest.get("prize1") or "-"
-        lines.append(f"🎯 **ผลล่าสุด**: {prize_num} ({label} {latest.get('two_digit') or '??'}){suffix}")
+        recent = analysis.get("recent_two_digits")
+        if recent:
+            lines.append(f"🎯 **ผลล่าสุด 5 งวด**: {' • '.join(recent[:5])}{suffix}")
+        else:
+            prize_num = latest.get("number") or latest.get("prize1") or "-"
+            lines.append(f"🎯 **ผลล่าสุด**: {prize_num} ({label} {latest.get('two_digit') or '??'}){suffix}")
     lines.append("")
     if hot:
         lines.append("🔥 **เลขร้อน (ออกบ่อย)**")

@@ -9,6 +9,7 @@ def analyze(results: list[dict]) -> dict:
         return {
             "total_draws": 0,
             "latest": None,
+            "recent_two_digits": [],
             "hot": [],
             "cold": [],
             "due": [],
@@ -95,6 +96,7 @@ def analyze(results: list[dict]) -> dict:
             "prize1": latest.get("prize1", ""),
             "two_digit": latest.get("two_digit", ""),
         },
+        "recent_two_digits": digits[:5],
         "hot": hot,
         "cold": cold,
         "due": due,
