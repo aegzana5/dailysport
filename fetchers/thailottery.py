@@ -41,28 +41,25 @@ def _parse_sanook_page(html: str) -> dict | None:
 def _collect_results(limit: int = _DRAW_LIMIT) -> list[dict]:
     collected: list[dict] = []
     d = _latest_draw_date()
-    seen_dates: set[str] = set()
 
-    for _ in range(limit + 20):
+    for _ in range(limit + 20):  # +20 absorbs up to 20 skipped draws (404/unparseable)
         date_str = d.isoformat()
-        if date_str not in seen_dates:
-            seen_dates.add(date_str)
-            try:
-                resp = requests.get(
-                    _page_url(d),
-                    timeout=10,
-                    headers={"User-Agent": "Mozilla/5.0"},
-                )
-                if resp.status_code == 200:
-                    resp.encoding = resp.apparent_encoding or "utf-8"
-                    result = _parse_sanook_page(resp.text)
-                    if result:
-                        result["date"] = date_str
-                        collected.append(result)
-                        if len(collected) >= limit:
-                            return collected
-            except Exception as e:
-                print(f"Warning: failed to fetch Thai lottery for {date_str}: {e}")
+        try:
+            resp = requests.get(
+                _page_url(d),
+                timeout=10,
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
+            if resp.status_code == 200:
+                resp.encoding = resp.apparent_encoding or "utf-8"
+                result = _parse_sanook_page(resp.text)
+                if result:
+                    result["date"] = date_str
+                    collected.append(result)
+                    if len(collected) >= limit:
+                        return collected
+        except Exception as e:
+            print(f"Warning: failed to fetch Thai lottery for {date_str}: {e}")
         d = _prev_draw_date(d)
 
     return collected
@@ -70,8 +67,4 @@ def _collect_results(limit: int = _DRAW_LIMIT) -> list[dict]:
 
 def fetch_results() -> list[dict]:
     """Return Thai lottery results as list[dict] newest-first, up to 100 draws."""
-    try:
-        return _collect_results(limit=_DRAW_LIMIT)
-    except Exception as e:
-        print(f"Warning: failed to fetch Thai lottery: {e}")
-        return []
+    return _collect_results(limit=_DRAW_LIMIT)
