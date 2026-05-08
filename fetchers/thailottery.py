@@ -24,3 +24,15 @@ def _prev_draw_date(d: date) -> date:
         return d.replace(day=1)
     prev = d.replace(day=1) - timedelta(days=1)
     return prev.replace(day=16)
+
+
+def _page_url(d: date) -> str:
+    return _BASE_URL.format(date=d.strftime("%Y%m%d"))
+
+
+def _parse_sanook_page(html: str) -> dict | None:
+    m = _PRIZE1_RE.search(html)
+    if not m:
+        return None
+    prize1 = m.group(1)
+    return {"prize1": prize1, "two_digit": prize1[-2:]}
