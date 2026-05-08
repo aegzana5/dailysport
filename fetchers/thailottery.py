@@ -1,70 +1,72 @@
-"""Thai Government Lottery fetcher — scrapes news.sanook.com/lotto/."""
+"""Thai Government Lottery fetcher — scrapes horoscope.thaiorc.com."""
 
 from __future__ import annotations
 
 import re
-from datetime import date, timedelta
 
 import requests
 
-_BASE_URL = "https://news.sanook.com/lotto/check/{date}/"
+_THAIORC_URL = "https://horoscope.thaiorc.com/lotto/thai/stats/lottery-years10.php"
 _DRAW_LIMIT = 100
-_PRIZE1_RE = re.compile(r"รางวัลที่\s*1[\s\S]*?(\d{6})", re.S)
+_ROW_RE = re.compile(
+    r"contentID=\d+\">(\d{2})/(\d{2})/(\d{4})</a>.*?"
+    r"<td[^>]*>\s*(\d{6})\s*</td>",
+    re.S,
+)
 
 
-def _latest_draw_date(today: date | None = None) -> date:
-    d = today or date.today()
-    if d.day >= 16:
-        return d.replace(day=16)
-    return d.replace(day=1)
+def _thaiorc_date_to_iso(day: str, month: str, buddhist_year: str) -> str:
+    year = int(buddhist_year)
+    if year > 2400:
+        year -= 543
+    return f"{year:04d}-{int(month):02d}-{int(day):02d}"
 
 
-def _prev_draw_date(d: date) -> date:
-    if d.day == 16:
-        return d.replace(day=1)
-    prev = d.replace(day=1) - timedelta(days=1)
-    return prev.replace(day=16)
+def _parse_thaiorc_results(html: str) -> list[dict]:
+    results = []
+    for day, month, buddhist_year, prize1 in _ROW_RE.findall(html):
+        results.append({
+            "date": _thaiorc_date_to_iso(day, month, buddhist_year),
+            "prize1": prize1,
+            "two_digit": prize1[-2:],
+        })
+    return results
 
 
-def _page_url(d: date) -> str:
-    return _BASE_URL.format(date=d.strftime("%Y%m%d"))
+def _page_url(page: int) -> str:
+    if page <= 1:
+        return _THAIORC_URL
+    return f"{_THAIORC_URL}?pg={page}"
 
 
-def _parse_sanook_page(html: str) -> dict | None:
-    m = _PRIZE1_RE.search(html)
-    if not m:
-        return None
-    prize1 = m.group(1)
-    return {"prize1": prize1, "two_digit": prize1[-2:]}
-
-
-def _collect_results(limit: int = _DRAW_LIMIT) -> list[dict]:
+def _collect_thaiorc_results(limit: int = _DRAW_LIMIT) -> list[dict]:
     collected: list[dict] = []
-    d = _latest_draw_date()
+    seen_dates: set[str] = set()
 
-    for _ in range(limit + 20):  # +20 absorbs up to 20 skipped draws (404/unparseable)
-        date_str = d.isoformat()
-        try:
-            resp = requests.get(
-                _page_url(d),
-                timeout=10,
-                headers={"User-Agent": "Mozilla/5.0"},
-            )
-            if resp.status_code == 200:
-                resp.encoding = resp.apparent_encoding or "utf-8"
-                result = _parse_sanook_page(resp.text)
-                if result:
-                    result["date"] = date_str
-                    collected.append(result)
-                    if len(collected) >= limit:
-                        return collected
-        except Exception as e:
-            print(f"Warning: failed to fetch Thai lottery for {date_str}: {e}")
-        d = _prev_draw_date(d)
+    for page in range(1, 20):
+        resp = requests.get(_page_url(page), timeout=10)
+        resp.raise_for_status()
+        resp.encoding = resp.apparent_encoding or "cp874"
+        page_results = _parse_thaiorc_results(resp.text)
+        if not page_results:
+            break
+
+        for result in page_results:
+            result_date = result.get("date")
+            if not result_date or result_date in seen_dates:
+                continue
+            seen_dates.add(result_date)
+            collected.append(result)
+            if len(collected) >= limit:
+                return collected
 
     return collected
 
 
 def fetch_results() -> list[dict]:
-    """Return Thai lottery results as list[dict] newest-first, up to 100 draws."""
-    return _collect_results(limit=_DRAW_LIMIT)
+    """Returns Thai Government Lottery results as {date, prize1, two_digit}, newest first."""
+    try:
+        return _collect_thaiorc_results(limit=_DRAW_LIMIT)
+    except Exception as e:
+        print(f"Warning: failed to fetch Thai lottery from ThaiORC: {e}")
+        return []
