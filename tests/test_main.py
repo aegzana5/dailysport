@@ -185,29 +185,41 @@ def test_kickoff_skips_when_first_match_is_not_in_window_even_if_later_match_is(
 
 
 def test_lottery_mode_posts_analysis():
-    _analysis = {
+    _lower_analysis = {
         "total_draws": 10,
         "hot": [{"number": "41", "count": 4}],
         "cold": [{"number": "00", "count": 0}],
         "due": [],
         "suggestions": ["41"],
+        "weekly_avg": [],
+        "latest": {"number": "12341", "two_digit": "41", "date": "2026-05-05", "time": ""},
+    }
+    _upper_analysis = {
+        "total_draws": 10,
+        "hot": [{"number": "31", "count": 3}],
+        "cold": [{"number": "00", "count": 0}],
+        "due": [],
+        "suggestions": ["31"],
+        "weekly_avg": [],
+        "latest": {"number": "12341", "two_digit": "31", "date": "2026-05-05", "time": ""},
     }
     with (
-        patch("main.fetch_lottery_results", return_value=[{"two_digit": "41"}]),
-        patch("main.analyze_lottery", return_value=_analysis),
+        patch("main.fetch_lottery_results", return_value=[{"two_digit": "41", "upper_two_digit": "31"}]),
+        patch("main.analyze_lottery", side_effect=[_lower_analysis, _upper_analysis]),
         patch("main.post_to_webhook") as mock_post,
         patch.dict("os.environ", _ENV),
     ):
         main.main(lottery_mode=True)
         mock_post.assert_called_once()
         assert "หวยลาว" in mock_post.call_args[0][1]["content"]
+        assert "2 ตัวบน" in mock_post.call_args[0][1]["content"]
 
 
 def test_lottery_mode_no_football_api_key_needed():
-    _analysis = {"total_draws": 0, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": []}
+    _analysis = {"total_draws": 0, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": [], "latest": None}
     with (
         patch("main.fetch_lottery_results", return_value=[]),
-        patch("main.analyze_lottery", return_value=_analysis),
+        patch("main.analyze_lottery", side_effect=[_analysis, _analysis]),
         patch("main.post_to_webhook"),
         patch.dict("os.environ", {"DISCORD_WEBHOOK_URL": "https://hook"}, clear=True),
     ):
@@ -217,13 +229,16 @@ def test_lottery_mode_no_football_api_key_needed():
 def test_combined_mode_no_matches_posts_image_only():
     _analysis = {
         "total_draws": 5, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": [],
+        "latest": None,
     }
     fake_img = b"PNG_BYTES"
     with (
         patch("main.fetch_matches", return_value=[]),
         patch("main.fetch_sessions", return_value=[]),
         patch("main.fetch_lottery_results", return_value=[]),
-        patch("main.analyze_lottery", return_value=_analysis),
+        patch("main.analyze_lottery", side_effect=[_analysis, _analysis]),
+        patch("main.fetch_stock_recommendations", return_value=[]),
+        patch("main.fetch_crypto_recommendations", return_value=[]),
         patch("main.generate_schedule_image", return_value=fake_img),
         patch("main.post_with_image") as mock_img_post,
         patch("main.post_to_webhook") as mock_text_post,
@@ -236,10 +251,54 @@ def test_combined_mode_no_matches_posts_image_only():
         assert mock_img_post.call_args[0][2] == fake_img
 
 
-def test_combined_mode_with_matches_posts_image():
+def test_thailottery_mode_posts_analysis():
     _analysis = {
+        "total_draws": 100,
+        "latest": {"date": "2025-12-16", "prize1": "123456", "two_digit": "56"},
+        "hot": [{"number": "56", "count": 8}],
+        "cold": [{"number": "00", "count": 0}],
+        "due": [],
+        "monthly_avg": [{"number": "56", "count": 8, "avg_per_month": 1.6}],
+        "suggestions": ["56"],
+    }
+    with (
+        patch("main.fetch_thai_results", return_value=[]),
+        patch("main.analyze_thai", return_value=_analysis),
+        patch("main.post_to_webhook") as mock_post,
+        patch.dict("os.environ", _ENV),
+    ):
+        main.main(thailottery_mode=True)
+        mock_post.assert_called_once()
+        assert "หวยไทย" in mock_post.call_args[0][1]["content"]
+
+
+def test_thailottery_mode_no_football_api_key_needed():
+    _analysis = {
+        "total_draws": 0, "latest": None,
+        "hot": [], "cold": [], "due": [], "monthly_avg": [], "suggestions": [],
+    }
+    with (
+        patch("main.fetch_thai_results", return_value=[]),
+        patch("main.analyze_thai", return_value=_analysis),
+        patch("main.post_to_webhook"),
+        patch.dict("os.environ", {"DISCORD_WEBHOOK_URL": "https://hook"}, clear=True),
+    ):
+        main.main(thailottery_mode=True)  # must not raise KeyError
+
+
+def test_combined_mode_with_matches_posts_image():
+    _lower_analysis = {
         "total_draws": 5,
         "latest": {"date": "2026-05-06", "time": "", "number": "12341", "two_digit": "41"},
+        "hot": [],
+        "cold": [],
+        "due": [],
+        "weekly_avg": [],
+        "suggestions": [],
+    }
+    _upper_analysis = {
+        "total_draws": 5,
+        "latest": {"date": "2026-05-06", "time": "", "number": "12341", "two_digit": "31"},
         "hot": [],
         "cold": [],
         "due": [],
@@ -252,7 +311,9 @@ def test_combined_mode_with_matches_posts_image():
         patch("main.fetch_matches", side_effect=[pl, []]),
         patch("main.fetch_sessions", return_value=[]),
         patch("main.fetch_lottery_results", return_value=[]),
-        patch("main.analyze_lottery", return_value=_analysis),
+        patch("main.analyze_lottery", side_effect=[_lower_analysis, _upper_analysis]),
+        patch("main.fetch_stock_recommendations", return_value=[]),
+        patch("main.fetch_crypto_recommendations", return_value=[]),
         patch("main.generate_schedule_image", return_value=fake_img),
         patch("main.post_with_image") as mock_img_post,
         patch("main.post_to_webhook") as mock_text_post,

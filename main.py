@@ -8,9 +8,13 @@ from fetchers.football import fetch_matches
 from fetchers.f1 import fetch_sessions
 from fetchers.lineup import fetch_lineup
 from fetchers.odds import fetch_handicap
+from fetchers.stocks import fetch_recommendations as fetch_stock_recommendations
+from fetchers.crypto import fetch_recommendations as fetch_crypto_recommendations
 from fetchers.laolottery import fetch_results as fetch_lottery_results
 from fetchers.laolottery_analyzer import analyze as analyze_lottery
-from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined
+from fetchers.thailottery import fetch_results as fetch_thai_results
+from fetchers.thailottery_analyzer import analyze as analyze_thai
+from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined, format_thailottery
 from image_generator import generate_schedule_image
 from discord_webhook import post_to_webhook, post_with_image
 
@@ -33,12 +37,20 @@ def _first_match_slot(matches: list[dict]) -> datetime | None:
     return min(kickoff_times)
 
 
+def _build_lottery_bundle(results: list[dict]) -> dict:
+    return {
+        "lower": analyze_lottery(results, digit_key="two_digit"),
+        "upper": analyze_lottery(results, digit_key="upper_two_digit"),
+    }
+
+
 def main(
     now_utc: datetime | None = None,
     reminder_mode: bool = False,
     kickoff_mode: bool = False,
     lottery_mode: bool = False,
     combined_mode: bool = False,
+    thailottery_mode: bool = False,
 ) -> None:
     if not reminder_mode:
         reminder_mode = "--reminder" in sys.argv
@@ -48,6 +60,8 @@ def main(
         lottery_mode = "--lottery" in sys.argv
     if not combined_mode:
         combined_mode = "--combined" in sys.argv
+    if not thailottery_mode:
+        thailottery_mode = "--thailottery" in sys.argv
 
     webhook_url = os.environ["DISCORD_WEBHOOK_URL"]
 
@@ -56,10 +70,18 @@ def main(
 
     if lottery_mode:
         results = fetch_lottery_results()
-        analysis = analyze_lottery(results)
+        analysis = _build_lottery_bundle(results)
         payload = format_lottery(analysis, now_utc.date())
         post_to_webhook(webhook_url, payload)
-        print(f"Posted lottery analysis ({analysis['total_draws']} draws).")
+        print(f"Posted lottery analysis ({analysis['lower']['total_draws']} draws).")
+        return
+
+    if thailottery_mode:
+        results = fetch_thai_results()
+        analysis = analyze_thai(results)
+        payload = format_thailottery(analysis, now_utc.date())
+        post_to_webhook(webhook_url, payload)
+        print(f"Posted Thai lottery analysis ({analysis['total_draws']} draws).")
         return
 
     api_key = os.environ["FOOTBALL_DATA_API_KEY"]
@@ -77,11 +99,19 @@ def main(
         if f1:
             matches_by_sport["Formula 1"] = f1
         lottery_results = fetch_lottery_results()
-        lottery_analysis = analyze_lottery(lottery_results)
+        lottery_analysis = _build_lottery_bundle(lottery_results)
+        stock_recommendations = fetch_stock_recommendations()
+        crypto_recommendations = fetch_crypto_recommendations()
         sport_total = sum(len(v) for v in matches_by_sport.values())
-        img_bytes = generate_schedule_image(matches_by_sport, today, lottery_analysis)
+        img_bytes = generate_schedule_image(
+            matches_by_sport,
+            today,
+            lottery_analysis,
+            stock_recommendations,
+            crypto_recommendations,
+        )
         post_with_image(webhook_url, {}, img_bytes, f"schedule-{today.isoformat()}.png")
-        print(f"Posted combined with image: {sport_total} sport event(s) + lottery ({lottery_analysis['total_draws']} draws).")
+        print(f"Posted combined with image: {sport_total} sport event(s) + lottery ({lottery_analysis['lower']['total_draws']} draws).")
         return
 
     if kickoff_mode:
