@@ -107,33 +107,21 @@ def _truncate_text(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFo
 
 
 def _font(bold: bool = False, size: int = 16):
-    # Thai-capable fonts must come first — Latin-only fonts render Thai as boxes
-    if bold:
-        ttc_candidates = [
-            ("/System/Library/Fonts/Supplemental/Thonburi.ttc", 1),
-            ("/System/Library/Fonts/Supplemental/SukhumvitSet.ttc", 0),
-        ]
-        path_candidates = [
+    # Tahoma has Thai support; Garuda is the Ubuntu Thai fallback
+    paths = (
+        [
+            "/System/Library/Fonts/Supplemental/Tahoma Bold.ttf",
+            "/System/Library/Fonts/Supplemental/Tahoma.ttf",
             "/usr/share/fonts/truetype/thai-tlwg/Garuda-Bold.ttf",
-            "/usr/share/fonts/truetype/noto/NotoSansThai-Bold.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-        ]
-    else:
-        ttc_candidates = [
-            ("/System/Library/Fonts/Supplemental/Thonburi.ttc", 0),
-            ("/System/Library/Fonts/Supplemental/SukhumvitSet.ttc", 0),
-        ]
-        path_candidates = [
             "/usr/share/fonts/truetype/thai-tlwg/Garuda.ttf",
-            "/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
         ]
-    for path, index in ttc_candidates:
-        if os.path.exists(path):
-            return ImageFont.truetype(path, size, index=index)
-    for path in path_candidates:
+        if bold
+        else [
+            "/System/Library/Fonts/Supplemental/Tahoma.ttf",
+            "/usr/share/fonts/truetype/thai-tlwg/Garuda.ttf",
+        ]
+    )
+    for path in paths:
         if os.path.exists(path):
             return ImageFont.truetype(path, size)
     return ImageFont.load_default()
