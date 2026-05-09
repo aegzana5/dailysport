@@ -15,8 +15,7 @@ from fetchers.laolottery_analyzer import analyze as analyze_lottery
 from fetchers.thailottery import fetch_results as fetch_thai_results
 from fetchers.thailottery_analyzer import analyze as analyze_thai
 from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined, format_thailottery
-from image_generator import generate_schedule_image
-from discord_webhook import post_to_webhook, post_with_image
+from discord_webhook import post_to_webhook
 
 _REMINDER_TARGET = timedelta(hours=2)
 _KICKOFF_TARGET = timedelta(minutes=30)
@@ -103,15 +102,9 @@ def main(
         stock_recommendations = fetch_stock_recommendations()
         crypto_recommendations = fetch_crypto_recommendations()
         sport_total = sum(len(v) for v in matches_by_sport.values())
-        img_bytes = generate_schedule_image(
-            matches_by_sport,
-            today,
-            lottery_analysis,
-            stock_recommendations,
-            crypto_recommendations,
-        )
-        post_with_image(webhook_url, {}, img_bytes, f"schedule-{today.isoformat()}.png")
-        print(f"Posted combined with image: {sport_total} sport event(s) + lottery ({lottery_analysis['lower']['total_draws']} draws).")
+        payload = format_combined(matches_by_sport, lottery_analysis, stock_recommendations, crypto_recommendations, today)
+        post_to_webhook(webhook_url, payload)
+        print(f"Posted combined: {sport_total} sport event(s) + lottery ({lottery_analysis['lower']['total_draws']} draws).")
         return
 
     if kickoff_mode:

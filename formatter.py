@@ -159,8 +159,37 @@ def format_thailottery(analysis: dict, today: date) -> dict:
     return {"content": "\n".join(lines).strip()}
 
 
-def format_combined(matches_by_sport: dict[str, list[dict]], lottery_analysis: dict, today: date) -> dict:
-    sport_lines = _build_lines(f"**📅 ตารางกีฬาวันนี้ — {today.isoformat()}**", matches_by_sport)
-    lottery_lines = _lottery_lines(lottery_analysis, today)
-    combined = sport_lines + ["", "─" * 30, ""] + lottery_lines
-    return {"content": "\n".join(combined).strip()}
+def _stock_lines(stocks: list[dict]) -> list[str]:
+    if not stocks:
+        return []
+    lines = ["**📈 หุ้นแนะนำวันนี้**", ""]
+    for s in stocks:
+        lines.append(f"  **{s['ticker']}** {s['company']} — {s['consensus']} — เป้า ${s['price_target']:,.0f} ({s['upside']:+.1f}%)")
+    lines.append("")
+    return lines
+
+
+def _crypto_lines(cryptos: list[dict]) -> list[str]:
+    if not cryptos:
+        return []
+    lines = ["**🪙 คริปโตโมเมนตัม**", ""]
+    for c in cryptos:
+        lines.append(f"  **{c['symbol']}** — ${c['price']:,.2f} — {c['change_24h']:+.1f}% (24h)")
+    lines.append("")
+    return lines
+
+
+def format_combined(
+    matches_by_sport: dict[str, list[dict]],
+    lottery_analysis: dict,
+    stock_recommendations: list[dict],
+    crypto_recommendations: list[dict],
+    today: date,
+) -> dict:
+    sep = ["", "─" * 30, ""]
+    parts: list[str] = []
+    parts += _build_lines(f"**📅 ตารางกีฬาวันนี้ — {today.isoformat()}**", matches_by_sport)
+    parts += sep + _stock_lines(stock_recommendations)
+    parts += sep + _crypto_lines(crypto_recommendations)
+    parts += sep + _lottery_lines(lottery_analysis, today)
+    return {"content": "\n".join(parts).strip()}
