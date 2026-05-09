@@ -2,8 +2,8 @@ name: Sport And Lottery
 
 on:
   schedule:
-    - cron: "0 5 * * *"      # 12:00 Thailand time
-    - cron: "*/30 * * * *"   # Check first-match 30-minute lineup window every 30 minutes
+    - cron: "0 5 * * *"     # 12:00 Thailand time — combined daily post
+    - cron: "*/30 * * * *"  # 30-min kickoff window check
   workflow_dispatch:
     inputs:
       mode:
@@ -19,46 +19,42 @@ on:
         type: boolean
         default: false
 
+env:
+  FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
+  DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+  ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+
 jobs:
   combined:
     if: |
       github.event.schedule == '0 5 * * *' ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'combined')
     runs-on: ubuntu-latest
+    concurrency:
+      group: combined
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Post combined sport and lottery image
-        run: python main.py --combined
-        env:
-          FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python main.py --combined
 
   kickoff:
     if: |
       github.event.schedule == '*/30 * * * *' ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'kickoff')
     runs-on: ubuntu-latest
+    concurrency:
+      group: kickoff
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Post first-match 30-minute lineup alert
-        run: python main.py --kickoff ${{ inputs.force && '--force' || '' }}
-        env:
-          FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python main.py --kickoff ${{ inputs.force && '--force' || '' }}

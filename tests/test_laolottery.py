@@ -35,9 +35,9 @@ def test_thaiorc_date_to_iso_converts_buddhist_year():
 
 def test_parse_thaiorc_results_returns_lottery_rows():
     assert _parse_thaiorc_results(_thaiorc_fixture()) == [
-        {"date": "2026-05-05", "time": "", "number": "7032", "two_digit": "32"},
-        {"date": "2026-05-04", "time": "", "number": "9193", "two_digit": "93"},
-        {"date": "2026-04-04", "time": "", "number": "2222", "two_digit": "22"},
+        {"date": "2026-05-05", "time": "", "number": "7032", "two_digit": "70", "upper_two_digit": "32"},
+        {"date": "2026-05-04", "time": "", "number": "9193", "two_digit": "91", "upper_two_digit": "93"},
+        {"date": "2026-04-04", "time": "", "number": "2222", "two_digit": "22", "upper_two_digit": "22"},
     ]
 
 
@@ -72,7 +72,7 @@ def test_collect_thaiorc_results_walks_pages_and_stops_at_limit():
 
 
 def test_fetch_results_uses_100_draw_collector():
-    with patch("fetchers.laolottery._collect_thaiorc_results", return_value=[{"date": "2026-05-05", "time": "", "number": "7032", "two_digit": "32"}]) as mock_collect:
+    with patch("fetchers.laolottery._collect_thaiorc_results", return_value=[{"date": "2026-05-05", "time": "", "number": "7032", "two_digit": "70", "upper_two_digit": "32"}]) as mock_collect:
         results = fetch_results()
     mock_collect.assert_called_once_with(limit=100)
     assert results[0]["number"] == "7032"

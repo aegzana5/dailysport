@@ -1,12 +1,12 @@
 from fetchers.laolottery_analyzer import analyze
 
 _DRAWS = [
-    {"two_digit": "41", "date": "2026-05-05", "time": "20:30", "number": "12341"},
-    {"two_digit": "07", "date": "2026-05-05"},
-    {"two_digit": "41", "date": "2026-05-04"}, {"two_digit": "23", "date": "2026-05-04"},
-    {"two_digit": "41", "date": "2026-04-28"}, {"two_digit": "07", "date": "2026-04-28"},
-    {"two_digit": "99", "date": "2026-04-27"}, {"two_digit": "41", "date": "2026-04-27"},
-    {"two_digit": "55", "date": "2026-04-21"},
+    {"two_digit": "41", "upper_two_digit": "21", "date": "2026-05-05", "time": "20:30", "number": "12341"},
+    {"two_digit": "07", "upper_two_digit": "07", "date": "2026-05-05"},
+    {"two_digit": "41", "upper_two_digit": "11", "date": "2026-05-04"}, {"two_digit": "23", "upper_two_digit": "23", "date": "2026-05-04"},
+    {"two_digit": "41", "upper_two_digit": "31", "date": "2026-04-28"}, {"two_digit": "07", "upper_two_digit": "17", "date": "2026-04-28"},
+    {"two_digit": "99", "upper_two_digit": "99", "date": "2026-04-27"}, {"two_digit": "41", "upper_two_digit": "51", "date": "2026-04-27"},
+    {"two_digit": "55", "upper_two_digit": "55", "date": "2026-04-21"},
 ]
 
 
@@ -71,3 +71,9 @@ def test_weekly_avg_present():
 def test_weekly_avg_top_is_most_frequent():
     r = analyze(_DRAWS)
     assert r["weekly_avg"][0]["number"] == "41"
+
+
+def test_upper_two_digit_analysis_uses_requested_key():
+    r = analyze(_DRAWS, digit_key="upper_two_digit")
+    assert r["latest"]["two_digit"] == "21"
+    assert r["hot"][0]["number"] == "07"

@@ -8,9 +8,7 @@ _THAIORC_URL = "https://horoscope.thaiorc.com/lotto/lao/stats/lottery-years10.ph
 _DRAW_LIMIT = 100
 _ROW_RE = re.compile(
     r"contentID=\d+\">(\d{2})/(\d{2})/(\d{4})</a>.*?"
-    r"<td[^>]*>\s*(\d{4})\s*</td>.*?"
-    r"<td[^>]*>\s*(\d{3})\s*</td>.*?"
-    r"<td[^>]*>\s*(\d{2})\s*</td>",
+    r"<td[^>]*>\s*(\d{4})\s*</td>",
     re.S,
 )
 
@@ -24,12 +22,13 @@ def _thaiorc_date_to_iso(day: str, month: str, buddhist_year: str) -> str:
 
 def _parse_thaiorc_results(html: str) -> list[dict]:
     results = []
-    for day, month, buddhist_year, number, _, two_digit in _ROW_RE.findall(html):
+    for day, month, buddhist_year, number in _ROW_RE.findall(html):
         results.append({
             "date": _thaiorc_date_to_iso(day, month, buddhist_year),
             "time": "",
             "number": number,
-            "two_digit": two_digit,
+            "two_digit": number[:2],
+            "upper_two_digit": number[-2:],
         })
     return results
 

@@ -1,4 +1,4 @@
-"""Lao Lottery 2-digit top-number analyzer."""
+"""Lao Lottery 2-digit analyzer."""
 
 from collections import Counter
 from datetime import datetime
@@ -13,7 +13,7 @@ def _iso_week(date_str: str) -> tuple[int, int]:
         return (0, 0)
 
 
-def analyze(results: list[dict]) -> dict:
+def analyze(results: list[dict], digit_key: str = "two_digit") -> dict:
     if not results:
         return {
             "total_draws": 0,
@@ -27,7 +27,7 @@ def analyze(results: list[dict]) -> dict:
 
     total = len(results)
     latest = results[0]
-    digits = [r["two_digit"] for r in results]
+    digits = [r[digit_key] for r in results if r.get(digit_key)]
     all_numbers = [f"{i:02d}" for i in range(100)]
 
     freq = Counter(digits)
@@ -97,7 +97,7 @@ def analyze(results: list[dict]) -> dict:
             "date": latest.get("date", ""),
             "time": latest.get("time", ""),
             "number": latest.get("number", ""),
-            "two_digit": latest.get("two_digit", ""),
+            "two_digit": latest.get(digit_key, ""),
         },
         "hot": hot,
         "cold": cold,
