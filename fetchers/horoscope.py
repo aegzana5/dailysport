@@ -101,11 +101,11 @@ def _fetch_sign(sign: str, sign_thai: str, emoji: str, date_range: str) -> dict:
         "emoji": emoji,
         "date_range": date_range,
         "description": _translate_description(raw_desc) if raw_desc else "-",
-        "compatibility": _SIGN_THAI.get(raw_compat, raw_compat),
-        "color": _COLOR_THAI.get(raw_color, raw_color),
+        "compatibility": _SIGN_THAI.get(raw_compat, raw_compat or "-"),
+        "color": _COLOR_THAI.get(raw_color, raw_color or "-"),
         "lucky_number": str(data.get("lucky_number", "-")),
         "lucky_time": _lucky_time_thai(raw_time) if raw_time else "-",
-        "mood": _MOOD_THAI.get(raw_mood, raw_mood),
+        "mood": _MOOD_THAI.get(raw_mood, raw_mood or "-"),
     }
 
 
