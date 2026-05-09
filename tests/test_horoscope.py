@@ -1,6 +1,6 @@
 from unittest.mock import Mock, patch
 
-from fetchers.horoscope import fetch_horoscopes, _lucky_time_thai, _translate_description
+from fetchers.horoscope import fetch_horoscopes, _translate_description
 
 
 def _mock_response(data: dict) -> Mock:
@@ -11,14 +11,10 @@ def _mock_response(data: dict) -> Mock:
 
 
 _SAMPLE_DATA = {
-    "date_range": "Mar 21 - Apr 19",
-    "current_date": "May 9, 2026",
-    "description": "Today is a great day.",
-    "compatibility": "Taurus",
-    "color": "Red",
-    "lucky_number": "7",
-    "lucky_time": "6am",
-    "mood": "Happy",
+    "date": "2026-05-09",
+    "period": "daily",
+    "sign": "Aries",
+    "horoscope": "Today is a great day.",
 }
 
 
@@ -44,7 +40,7 @@ def test_fetch_horoscopes_first_sign_is_aries():
     assert result[0]["emoji"] == "♈"
 
 
-def test_fetch_horoscopes_translates_fixed_fields():
+def test_fetch_horoscopes_translates_description():
     resp = _mock_response(_SAMPLE_DATA)
     with (
         patch("fetchers.horoscope.requests.get", return_value=resp),
@@ -52,11 +48,6 @@ def test_fetch_horoscopes_translates_fixed_fields():
     ):
         result = fetch_horoscopes()
     aries = result[0]
-    assert aries["color"] == "สีแดง"
-    assert aries["mood"] == "มีความสุข"
-    assert aries["compatibility"] == "ราศีพฤษภ"
-    assert aries["lucky_time"] == "06:00 น."
-    assert aries["lucky_number"] == "7"
     assert aries["description"] == "วันนี้ดีมาก"
 
 
@@ -68,25 +59,6 @@ def test_fetch_horoscopes_fallback_on_http_error():
     assert len(result) == 12
     assert result[0]["description"] == "ไม่สามารถโหลดข้อมูลได้"
 
-
-def test_lucky_time_thai_am():
-    assert _lucky_time_thai("6am") == "06:00 น."
-
-
-def test_lucky_time_thai_pm():
-    assert _lucky_time_thai("3pm") == "15:00 น."
-
-
-def test_lucky_time_thai_noon():
-    assert _lucky_time_thai("12pm") == "12:00 น."
-
-
-def test_lucky_time_thai_midnight():
-    assert _lucky_time_thai("12am") == "00:00 น."
-
-
-def test_lucky_time_thai_unknown_passthrough():
-    assert _lucky_time_thai("evening") == "evening"
 
 
 def test_translate_description_fallback_on_error():

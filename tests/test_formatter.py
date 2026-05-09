@@ -201,11 +201,6 @@ _HOROSCOPE_SIGN = {
     "emoji": "♈",
     "date_range": "Mar 21 - Apr 19",
     "description": "วันนี้เป็นวันที่ดี",
-    "compatibility": "ราศีพฤษภ",
-    "color": "สีแดง",
-    "lucky_number": "7",
-    "lucky_time": "06:00 น.",
-    "mood": "มีความสุข",
 }
 
 

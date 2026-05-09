@@ -230,13 +230,6 @@ def format_horoscope(horoscopes: list[dict], today: date) -> list[dict]:
     for h in horoscopes:
         lines.append(f"{h['emoji']} **{h['sign_thai']}** ({h['date_range']})")
         lines.append(h["description"])
-        lines.append(
-            f"💑 เข้ากันได้: {h['compatibility']} | "
-            f"🎨 สี: {h['color']} | "
-            f"🍀 เลขนำโชค: {h['lucky_number']} | "
-            f"⏰ เวลามงคล: {h['lucky_time']} | "
-            f"😊 อารมณ์: {h['mood']}"
-        )
         lines.append("")
     content = "\n".join(lines).strip()
     payloads: list[dict] = []

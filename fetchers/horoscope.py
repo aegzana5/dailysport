@@ -85,15 +85,9 @@ def _fetch_sign(sign: str, sign_thai: str, emoji: str, date_range: str) -> dict:
         return {
             "sign": sign, "sign_thai": sign_thai, "emoji": emoji,
             "date_range": date_range, "description": "ไม่สามารถโหลดข้อมูลได้",
-            "compatibility": "-", "color": "-", "lucky_number": "-",
-            "lucky_time": "-", "mood": "-",
         }
 
-    raw_desc = str(data.get("description", "")).strip()
-    raw_color = str(data.get("color", "")).strip()
-    raw_mood = str(data.get("mood", "")).strip()
-    raw_compat = str(data.get("compatibility", "")).strip()
-    raw_time = str(data.get("lucky_time", "")).strip()
+    raw_desc = str(data.get("horoscope", "")).strip()
 
     return {
         "sign": sign,
@@ -101,11 +95,6 @@ def _fetch_sign(sign: str, sign_thai: str, emoji: str, date_range: str) -> dict:
         "emoji": emoji,
         "date_range": date_range,
         "description": _translate_description(raw_desc) if raw_desc else "-",
-        "compatibility": _SIGN_THAI.get(raw_compat, raw_compat or "-"),
-        "color": _COLOR_THAI.get(raw_color, raw_color or "-"),
-        "lucky_number": str(data.get("lucky_number", "-")),
-        "lucky_time": _lucky_time_thai(raw_time) if raw_time else "-",
-        "mood": _MOOD_THAI.get(raw_mood, raw_mood or "-"),
     }
 
 
