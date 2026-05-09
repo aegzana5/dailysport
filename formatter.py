@@ -162,9 +162,9 @@ def format_thailottery(analysis: dict, today: date) -> dict:
 def _stock_lines(stocks: list[dict]) -> list[str]:
     if not stocks:
         return []
-    lines = ["**📈 หุ้นแนะนำวันนี้**", ""]
+    lines = ["**📈 หุ้นแนะนำ**", ""]
     for s in stocks:
-        lines.append(f"  **{s['ticker']}** {s['company']} — {s['consensus']} — เป้า ${s['price_target']:,.0f} ({s['upside']:+.1f}%)")
+        lines.append(f"  **{s['ticker']}** — {s['consensus']} — เป้า ${s['price_target']:,.0f} ({s['upside']:+.1f}%)")
     lines.append("")
     return lines
 
@@ -172,9 +172,27 @@ def _stock_lines(stocks: list[dict]) -> list[str]:
 def _crypto_lines(cryptos: list[dict]) -> list[str]:
     if not cryptos:
         return []
-    lines = ["**🪙 คริปโตโมเมนตัม**", ""]
+    lines = ["**🪙 คริปโต**", ""]
     for c in cryptos:
         lines.append(f"  **{c['symbol']}** — ${c['price']:,.2f} — {c['change_24h']:+.1f}% (24h)")
+    lines.append("")
+    return lines
+
+
+def _lottery_compact_lines(analysis: dict, today: date) -> list[str]:
+    lines = [f"**🎱 หวยลาว — {today.isoformat()}**", ""]
+    for key, label in (("lower", "2 ตัวล่าง"), ("upper", "2 ตัวบน")):
+        mode = analysis.get(key, {})
+        if not mode or not mode.get("total_draws"):
+            continue
+        recent = mode.get("recent_two_digits") or []
+        suggestions = mode.get("suggestions") or []
+        parts_line = []
+        if recent:
+            parts_line.append(f"ล่าสุด: {' • '.join(recent[:5])}")
+        if suggestions:
+            parts_line.append(f"แนะนำ: {' • '.join(suggestions)}")
+        lines.append(f"**{label}** — " + " | ".join(parts_line) if parts_line else f"**{label}**")
     lines.append("")
     return lines
 
@@ -185,11 +203,23 @@ def format_combined(
     stock_recommendations: list[dict],
     crypto_recommendations: list[dict],
     today: date,
-) -> dict:
+) -> list[dict]:
     sep = ["", "─" * 30, ""]
     parts: list[str] = []
-    parts += _build_lines(f"**📅 ตารางกีฬาวันนี้ — {today.isoformat()}**", matches_by_sport)
+    parts += _build_lines(f"**📅 ตารางกีฬาและหวยลาว — {today.isoformat()}**", matches_by_sport)
     parts += sep + _stock_lines(stock_recommendations)
     parts += sep + _crypto_lines(crypto_recommendations)
-    parts += sep + _lottery_lines(lottery_analysis, today)
-    return {"content": "\n".join(parts).strip()}
+    parts += sep + _lottery_compact_lines(lottery_analysis, today)
+    content = "\n".join(parts).strip()
+    # split at 2000-char boundary on newline
+    payloads: list[dict] = []
+    while content:
+        if len(content) <= 2000:
+            payloads.append({"content": content})
+            break
+        split = content.rfind("\n", 0, 2000)
+        if split == -1:
+            split = 2000
+        payloads.append({"content": content[:split].strip()})
+        content = content[split:].strip()
+    return payloads

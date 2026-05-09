@@ -102,9 +102,10 @@ def main(
         stock_recommendations = fetch_stock_recommendations()
         crypto_recommendations = fetch_crypto_recommendations()
         sport_total = sum(len(v) for v in matches_by_sport.values())
-        payload = format_combined(matches_by_sport, lottery_analysis, stock_recommendations, crypto_recommendations, today)
-        post_to_webhook(webhook_url, payload)
-        print(f"Posted combined: {sport_total} sport event(s) + lottery ({lottery_analysis['lower']['total_draws']} draws).")
+        payloads = format_combined(matches_by_sport, lottery_analysis, stock_recommendations, crypto_recommendations, today)
+        for payload in payloads:
+            post_to_webhook(webhook_url, payload)
+        print(f"Posted combined ({len(payloads)} msg): {sport_total} sport event(s) + lottery ({lottery_analysis['lower']['total_draws']} draws).")
         return
 
     if kickoff_mode:
