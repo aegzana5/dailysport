@@ -327,3 +327,31 @@ def test_combined_mode_with_matches_posts_image():
         payload = mock_img_post.call_args[0][1]
         assert payload == {}
         assert mock_img_post.call_args[0][2] == fake_img
+
+
+_HOROSCOPE_SIGN = {
+    "sign": "Aries", "sign_thai": "ราศีเมษ", "emoji": "♈",
+    "date_range": "Mar 21 - Apr 19", "description": "วันนี้ดี",
+    "compatibility": "ราศีพฤษภ", "color": "สีแดง",
+    "lucky_number": "7", "lucky_time": "06:00 น.", "mood": "มีความสุข",
+}
+_HOROSCOPES = [_HOROSCOPE_SIGN] * 12
+
+
+def test_horoscope_mode_posts_to_discord():
+    with (
+        patch("main.fetch_horoscopes", return_value=_HOROSCOPES),
+        patch("main.post_to_webhook") as mock_post,
+        patch.dict("os.environ", {"DISCORD_WEBHOOK_URL": "https://hook"}),
+    ):
+        main.main(horoscope_mode=True)
+    assert mock_post.called
+
+
+def test_horoscope_mode_does_not_require_football_api_key():
+    with (
+        patch("main.fetch_horoscopes", return_value=_HOROSCOPES),
+        patch("main.post_to_webhook"),
+        patch.dict("os.environ", {"DISCORD_WEBHOOK_URL": "https://hook"}, clear=True),
+    ):
+        main.main(horoscope_mode=True)
