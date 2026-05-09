@@ -20,6 +20,14 @@ Add a standalone `--horoscope` mode that fetches detailed daily Western zodiac h
 
 **Signs (in order):** Aries, Taurus, Gemini, Cancer, Leo, Virgo, Libra, Scorpio, Sagittarius, Capricorn, Aquarius, Pisces
 
+## Translation Strategy
+
+Fixed fields (`color`, `mood`, `compatibility`, `lucky_time`) use hardcoded Thai dicts in `fetchers/horoscope.py`. Unmapped values fall back to original English.
+
+`description` (free-form daily text) translated via `deep_translator` library using Google Translate backend — no API key required, ~12 extra HTTP calls.
+
+Dependency: add `deep_translator` to `requirements.txt`.
+
 ## Architecture
 
 ### New file: `fetchers/horoscope.py`
@@ -35,15 +43,16 @@ Returns list of 12 dicts, one per sign:
     "sign_thai": "ราศีเมษ",
     "emoji": "♈",
     "date_range": "Mar 21 - Apr 19",
-    "description": "...",
-    "compatibility": "Taurus",
-    "color": "Red",
-    "lucky_number": "7",
-    "lucky_time": "6am",
-    "mood": "Happy",
+    "description": "...",          # translated Thai via deep_translator
+    "compatibility": "ราศีพฤษภ",  # hardcoded Thai dict
+    "color": "สีแดง",              # hardcoded Thai dict
+    "lucky_number": "7",           # numeric, no translation
+    "lucky_time": "06:00",         # normalised Thai format
+    "mood": "มีความสุข",           # hardcoded Thai dict
 }
 ```
 On HTTP error for a sign: return partial dict with `description: "ไม่สามารถโหลดข้อมูลได้"`.
+On translation failure: keep original English text.
 
 ### Modified: `formatter.py`
 
@@ -52,8 +61,8 @@ Add `format_horoscope(horoscopes: list[dict], today: date) -> list[dict]`.
 Output format per sign:
 ```
 ♈ **ราศีเมษ** (Mar 21 - Apr 19)
-<description text>
-💑 เข้ากันได้: Taurus | 🎨 สี: Red | 🍀 เลขนำโชค: 7 | ⏰ เวลามงคล: 6am | 😊 อารมณ์: Happy
+<Thai description text>
+💑 เข้ากันได้: ราศีพฤษภ | 🎨 สี: สีแดง | 🍀 เลขนำโชค: 7 | ⏰ เวลามงคล: 06:00 | 😊 อารมณ์: มีความสุข
 
 ```
 
@@ -113,7 +122,8 @@ Add `tests/test_horoscope.py`:
 
 | File | Change |
 |------|--------|
-| `fetchers/horoscope.py` | New — fetcher |
+| `fetchers/horoscope.py` | New — fetcher + translation |
 | `formatter.py` | Add `format_horoscope()` |
 | `main.py` | Add `--horoscope` mode |
+| `requirements.txt` | Add `deep_translator` |
 | `tests/test_horoscope.py` | New — tests |
