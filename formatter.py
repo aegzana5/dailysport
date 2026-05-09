@@ -225,6 +225,47 @@ def format_combined(
     return payloads
 
 
+_FPL_POS_EMOJI = {
+    "Goalkeeper": "🧤",
+    "Defender": "🛡️",
+    "Midfielder": "⚙️",
+    "Forward": "⚡",
+}
+_FPL_POS_ORDER = ["Goalkeeper", "Defender", "Midfielder", "Forward"]
+
+
+def format_fpl_scout(data: dict) -> dict:
+    gw = data.get("gameweek", "?")
+    players = data.get("players", [])
+    lines = [f"**🤖 FPL Scout AI — GW{gw}**", ""]
+    if not players:
+        lines.append("ไม่มีข้อมูล")
+        return {"content": "\n".join(lines).strip()}
+    by_pos: dict[str, list] = {p: [] for p in _FPL_POS_ORDER}
+    for p in players:
+        by_pos.setdefault(p["position"], []).append(p)
+    for pos in _FPL_POS_ORDER:
+        group = by_pos.get(pos, [])
+        if not group:
+            continue
+        emoji = _FPL_POS_EMOJI.get(pos, "⚽")
+        for p in group:
+            ha = "H" if p["home"] else "A"
+            role = ""
+            if p["role"] == "captain":
+                role = " **(C)**"
+            elif p["role"] == "vice":
+                role = " **(V)**"
+            lines.append(
+                f"{emoji} **{p['name']}** {p['team']} vs {p['opponent']} {ha}"
+                f" — {p['xpts']} xPts{role}"
+            )
+        lines.append("")
+    while lines and lines[-1] == "":
+        lines.pop()
+    return {"content": "\n".join(lines).strip()}
+
+
 def format_fpl_standings(data: dict, today: date) -> dict:
     league_name = data.get("league_name", "FPL League")
     standings = data.get("standings", [])
@@ -246,6 +287,51 @@ def format_fpl_standings(data: dict, today: date) -> dict:
             f" — {s['total']} pts (+{s['event_total']} GW)"
         )
     return {"content": "\n".join(lines).strip()}
+
+
+def format_fpl_team_picks(
+    standings: list[dict],
+    picks_map: dict[int, list[dict]],
+    name_map: dict[int, dict],
+    gameweek: int,
+) -> list[dict]:
+    lines = [f"**👥 ทีมประจำ GW{gameweek}**", ""]
+    for s in standings:
+        entry_id = s.get("entry_id")
+        picks = picks_map.get(entry_id, [])
+        lines.append(f"**{s['entry_name']}** ({s['player_name']})")
+        if not picks:
+            lines.append("  ไม่มีข้อมูล")
+        else:
+            starters = sorted([p for p in picks if p["position"] <= 11], key=lambda x: x["position"])
+            bench = sorted([p for p in picks if p["position"] > 11], key=lambda x: x["position"])
+
+            def _fmt(p: dict) -> str:
+                el = name_map.get(p["element"], {})
+                name = el.get("web_name", str(p["element"]))
+                if p.get("is_captain"):
+                    return f"{name}©"
+                if p.get("is_vice_captain"):
+                    return f"{name}(v)"
+                return name
+
+            lines.append("  " + " • ".join(_fmt(p) for p in starters))
+            if bench:
+                lines.append("  🪑 " + " • ".join(_fmt(p) for p in bench))
+        lines.append("")
+
+    content = "\n".join(lines).strip()
+    payloads: list[dict] = []
+    while content:
+        if len(content) <= 2000:
+            payloads.append({"content": content})
+            break
+        split = content.rfind("\n", 0, 2000)
+        if split == -1:
+            split = 2000
+        payloads.append({"content": content[:split].strip()})
+        content = content[split:].strip()
+    return payloads
 
 
 def format_horoscope(horoscopes: list[dict], today: date) -> list[dict]:

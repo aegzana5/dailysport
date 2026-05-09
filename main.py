@@ -15,8 +15,9 @@ from fetchers.laolottery_analyzer import analyze as analyze_lottery
 from fetchers.thailottery import fetch_results as fetch_thai_results
 from fetchers.thailottery_analyzer import analyze as analyze_thai
 from fetchers.horoscope import fetch_horoscopes
-from fetchers.fpl import fetch_standings as fetch_fpl_standings
-from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined, format_thailottery, format_horoscope, format_fpl_standings
+from fetchers.fpl import fetch_standings as fetch_fpl_standings, fetch_bootstrap, fetch_team_picks
+from fetchers.fpl_scout import fetch_scout_team
+from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined, format_thailottery, format_horoscope, format_fpl_standings, format_fpl_scout, format_fpl_team_picks
 from discord_webhook import post_to_webhook
 
 _REMINDER_TARGET = timedelta(hours=2)
@@ -100,10 +101,21 @@ def main(
         return
 
     if fpl_mode:
-        data = fetch_fpl_standings()
-        payload = format_fpl_standings(data, now_utc.date())
-        post_to_webhook(webhook_url, payload)
-        print(f"Posted FPL standings ({len(data['standings'])} entries).")
+        scout = fetch_scout_team()
+        scout_payload = format_fpl_scout(scout)
+        post_to_webhook(webhook_url, scout_payload)
+        standings = fetch_fpl_standings()
+        standings_payload = format_fpl_standings(standings, now_utc.date())
+        post_to_webhook(webhook_url, standings_payload)
+        bootstrap = fetch_bootstrap()
+        gw = scout.get("gameweek") or bootstrap["current_gw"]
+        name_map = bootstrap["name_map"]
+        picks_map: dict = {}
+        for s in standings["standings"]:
+            picks_map[s["entry_id"]] = fetch_team_picks(s["entry_id"], gw)
+        for payload in format_fpl_team_picks(standings["standings"], picks_map, name_map, gw):
+            post_to_webhook(webhook_url, payload)
+        print(f"Posted FPL scout (GW{scout['gameweek']}, {len(scout['players'])} players) + standings ({len(standings['standings'])} entries) + team picks.")
         return
 
     api_key = os.environ["FOOTBALL_DATA_API_KEY"]
