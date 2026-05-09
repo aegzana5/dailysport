@@ -225,6 +225,29 @@ def format_combined(
     return payloads
 
 
+def format_fpl_standings(data: dict, today: date) -> dict:
+    league_name = data.get("league_name", "FPL League")
+    standings = data.get("standings", [])
+    lines = [f"**🏆 {league_name} — {today.isoformat()}**", ""]
+    if not standings:
+        lines.append("ไม่มีข้อมูล")
+        return {"content": "\n".join(lines).strip()}
+    for s in standings:
+        rank = s["rank"]
+        last_rank = s["last_rank"]
+        if rank < last_rank:
+            arrow = "🔼"
+        elif rank > last_rank:
+            arrow = "🔽"
+        else:
+            arrow = "➡️"
+        lines.append(
+            f"`{rank:>2}.` {arrow} **{s['entry_name']}** ({s['player_name']})"
+            f" — {s['total']} pts (+{s['event_total']} GW)"
+        )
+    return {"content": "\n".join(lines).strip()}
+
+
 def format_horoscope(horoscopes: list[dict], today: date) -> list[dict]:
     lines = [f"**🔮 ดวงชะตาประจำวัน — {today.isoformat()}**", ""]
     for h in horoscopes:

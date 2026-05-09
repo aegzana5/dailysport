@@ -15,7 +15,8 @@ from fetchers.laolottery_analyzer import analyze as analyze_lottery
 from fetchers.thailottery import fetch_results as fetch_thai_results
 from fetchers.thailottery_analyzer import analyze as analyze_thai
 from fetchers.horoscope import fetch_horoscopes
-from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined, format_thailottery, format_horoscope
+from fetchers.fpl import fetch_standings as fetch_fpl_standings
+from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined, format_thailottery, format_horoscope, format_fpl_standings
 from discord_webhook import post_to_webhook
 
 _REMINDER_TARGET = timedelta(hours=2)
@@ -52,6 +53,7 @@ def main(
     combined_mode: bool = False,
     thailottery_mode: bool = False,
     horoscope_mode: bool = False,
+    fpl_mode: bool = False,
 ) -> None:
     if not reminder_mode:
         reminder_mode = "--reminder" in sys.argv
@@ -65,6 +67,8 @@ def main(
         thailottery_mode = "--thailottery" in sys.argv
     if not horoscope_mode:
         horoscope_mode = "--horoscope" in sys.argv
+    if not fpl_mode:
+        fpl_mode = "--fpl" in sys.argv
 
     webhook_url = os.environ["DISCORD_WEBHOOK_URL"]
 
@@ -93,6 +97,13 @@ def main(
         for payload in payloads:
             post_to_webhook(webhook_url, payload)
         print(f"Posted horoscope ({len(horoscopes)} signs, {len(payloads)} msg).")
+        return
+
+    if fpl_mode:
+        data = fetch_fpl_standings()
+        payload = format_fpl_standings(data, now_utc.date())
+        post_to_webhook(webhook_url, payload)
+        print(f"Posted FPL standings ({len(data['standings'])} entries).")
         return
 
     api_key = os.environ["FOOTBALL_DATA_API_KEY"]
