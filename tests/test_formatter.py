@@ -1,5 +1,5 @@
 from datetime import date
-from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined, format_thailottery
+from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined, format_thailottery, format_horoscope
 
 _PL = [{"label": "Arsenal vs Chelsea", "time": "19:45 UTC", "competition": "Premier League"}]
 _UCL = [{"label": "PSG vs Barcelona", "time": "20:00 UTC", "competition": "Champions League"}]
@@ -193,3 +193,48 @@ def test_format_thailottery_empty_analysis():
     payload = format_thailottery(empty, date(2025, 12, 16))
     assert "หวยไทย" in payload["content"]
     assert "ไม่มีข้อมูล" in payload["content"]
+
+
+_HOROSCOPE_SIGN = {
+    "sign": "Aries",
+    "sign_thai": "ราศีเมษ",
+    "emoji": "♈",
+    "date_range": "Mar 21 - Apr 19",
+    "description": "วันนี้เป็นวันที่ดี",
+    "compatibility": "ราศีพฤษภ",
+    "color": "สีแดง",
+    "lucky_number": "7",
+    "lucky_time": "06:00 น.",
+    "mood": "มีความสุข",
+}
+
+
+def test_format_horoscope_returns_list_of_dicts():
+    result = format_horoscope([_HOROSCOPE_SIGN], date(2026, 5, 9))
+    assert isinstance(result, list)
+    assert all("content" in p for p in result)
+
+
+def test_format_horoscope_contains_thai_sign_name():
+    result = format_horoscope([_HOROSCOPE_SIGN], date(2026, 5, 9))
+    combined = "\n".join(p["content"] for p in result)
+    assert "ราศีเมษ" in combined
+
+
+def test_format_horoscope_contains_description():
+    result = format_horoscope([_HOROSCOPE_SIGN], date(2026, 5, 9))
+    combined = "\n".join(p["content"] for p in result)
+    assert "วันนี้เป็นวันที่ดี" in combined
+
+
+def test_format_horoscope_contains_date_header():
+    result = format_horoscope([_HOROSCOPE_SIGN], date(2026, 5, 9))
+    assert "2026-05-09" in result[0]["content"]
+
+
+def test_format_horoscope_splits_at_2000_chars():
+    long_sign = {**_HOROSCOPE_SIGN, "description": "ก" * 300}
+    signs = [long_sign] * 12
+    result = format_horoscope(signs, date(2026, 5, 9))
+    assert all(len(p["content"]) <= 2000 for p in result)
+    assert len(result) > 1

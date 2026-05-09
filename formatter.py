@@ -223,3 +223,30 @@ def format_combined(
         payloads.append({"content": content[:split].strip()})
         content = content[split:].strip()
     return payloads
+
+
+def format_horoscope(horoscopes: list[dict], today: date) -> list[dict]:
+    lines = [f"**🔮 ดวงชะตาประจำวัน — {today.isoformat()}**", ""]
+    for h in horoscopes:
+        lines.append(f"{h['emoji']} **{h['sign_thai']}** ({h['date_range']})")
+        lines.append(h["description"])
+        lines.append(
+            f"💑 เข้ากันได้: {h['compatibility']} | "
+            f"🎨 สี: {h['color']} | "
+            f"🍀 เลขนำโชค: {h['lucky_number']} | "
+            f"⏰ เวลามงคล: {h['lucky_time']} | "
+            f"😊 อารมณ์: {h['mood']}"
+        )
+        lines.append("")
+    content = "\n".join(lines).strip()
+    payloads: list[dict] = []
+    while content:
+        if len(content) <= 2000:
+            payloads.append({"content": content})
+            break
+        split = content.rfind("\n", 0, 2000)
+        if split == -1:
+            split = 2000
+        payloads.append({"content": content[:split].strip()})
+        content = content[split:].strip()
+    return payloads
