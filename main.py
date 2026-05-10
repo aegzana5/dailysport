@@ -76,6 +76,15 @@ def main(
     if now_utc is None:
         now_utc = datetime.now(timezone.utc)
 
+    if horoscope_mode:
+        horoscope_webhook = os.environ.get("HOROSCOPE_WEBHOOK_URL", webhook_url)
+        horoscopes = fetch_horoscopes()
+        payloads = format_horoscope(horoscopes, now_utc.date())
+        for payload in payloads:
+            post_to_webhook(horoscope_webhook, payload)
+        print(f"Posted horoscope ({len(horoscopes)} signs, {len(payloads)} msg).")
+        return
+
     if lottery_mode:
         results = fetch_lottery_results()
         analysis = _build_lottery_bundle(results)
@@ -90,14 +99,6 @@ def main(
         payload = format_thailottery(analysis, now_utc.date())
         post_to_webhook(webhook_url, payload)
         print(f"Posted Thai lottery analysis ({analysis['total_draws']} draws).")
-        return
-
-    if horoscope_mode:
-        horoscopes = fetch_horoscopes()
-        payloads = format_horoscope(horoscopes, now_utc.date())
-        for payload in payloads:
-            post_to_webhook(webhook_url, payload)
-        print(f"Posted horoscope ({len(horoscopes)} signs, {len(payloads)} msg).")
         return
 
     if fpl_mode:
