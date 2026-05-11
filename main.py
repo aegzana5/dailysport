@@ -102,12 +102,13 @@ def main(
         return
 
     if fpl_mode:
+        fpl_webhook = os.environ.get("FPL_WEBHOOK_URL", webhook_url)
         scout = fetch_scout_team()
         scout_payload = format_fpl_scout(scout)
-        post_to_webhook(webhook_url, scout_payload)
+        post_to_webhook(fpl_webhook, scout_payload)
         standings = fetch_fpl_standings()
         standings_payload = format_fpl_standings(standings, now_utc.date())
-        post_to_webhook(webhook_url, standings_payload)
+        post_to_webhook(fpl_webhook, standings_payload)
         bootstrap = fetch_bootstrap()
         gw = scout.get("gameweek") or bootstrap["current_gw"]
         name_map = bootstrap["name_map"]
@@ -115,7 +116,7 @@ def main(
         for s in standings["standings"]:
             picks_map[s["entry_id"]] = fetch_team_picks(s["entry_id"], gw)
         for payload in format_fpl_team_picks(standings["standings"], picks_map, name_map, gw):
-            post_to_webhook(webhook_url, payload)
+            post_to_webhook(fpl_webhook, payload)
         print(f"Posted FPL scout (GW{scout['gameweek']}, {len(scout['players'])} players) + standings ({len(standings['standings'])} entries) + team picks.")
         return
 
