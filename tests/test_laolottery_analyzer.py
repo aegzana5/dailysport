@@ -77,3 +77,13 @@ def test_upper_two_digit_analysis_uses_requested_key():
     r = analyze(_DRAWS, digit_key="upper_two_digit")
     assert r["latest"]["two_digit"] == "21"
     assert r["hot"][0]["number"] == "07"
+
+
+def test_recent_two_digits_returns_up_to_5_newest():
+    r = analyze(_DRAWS)
+    assert r["recent_two_digits"] == ["41", "07", "41", "23", "41"]
+
+
+def test_recent_two_digits_empty_on_no_results():
+    r = analyze([])
+    assert "recent_two_digits" not in r or r.get("recent_two_digits") == []

@@ -99,6 +99,7 @@ def analyze(results: list[dict], digit_key: str = "two_digit") -> dict:
             "number": latest.get("number", ""),
             "two_digit": latest.get(digit_key, ""),
         },
+        "recent_two_digits": digits[:5],
         "hot": hot,
         "cold": cold,
         "due": due,
