@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import os
 import sys
+
+from dotenv import load_dotenv
+load_dotenv()
 from datetime import date, datetime, timezone, timedelta
 
 from fetchers.football import fetch_matches
@@ -103,15 +106,15 @@ def main(
 
     if fpl_mode:
         fpl_webhook = os.environ.get("FPL_WEBHOOK_URL", webhook_url)
-        scout = fetch_scout_team()
+        bootstrap = fetch_bootstrap()
+        gw = bootstrap["current_gw"]
+        name_map = bootstrap["name_map"]
+        scout = fetch_scout_team(gw)
         scout_payload = format_fpl_scout(scout)
         post_to_webhook(fpl_webhook, scout_payload)
         standings = fetch_fpl_standings()
         standings_payload = format_fpl_standings(standings, now_utc.date())
         post_to_webhook(fpl_webhook, standings_payload)
-        bootstrap = fetch_bootstrap()
-        gw = scout.get("gameweek") or bootstrap["current_gw"]
-        name_map = bootstrap["name_map"]
         picks_map: dict = {}
         for s in standings["standings"]:
             picks_map[s["entry_id"]] = fetch_team_picks(s["entry_id"], gw)
@@ -126,12 +129,15 @@ def main(
         today = now_utc.date()
         pl = fetch_matches(api_key, "PL", "Premier League", today)
         ucl = fetch_matches(api_key, "CL", "Champions League", today)
+        wc = fetch_matches(api_key, "WC", "World Cup", today)
         f1 = fetch_sessions(today)
         matches_by_sport: dict[str, list[dict]] = {}
         if pl:
             matches_by_sport["Premier League"] = pl
         if ucl:
             matches_by_sport["Champions League"] = ucl
+        if wc:
+            matches_by_sport["World Cup"] = wc
         if f1:
             matches_by_sport["Formula 1"] = f1
         lottery_results = fetch_lottery_results()
@@ -151,7 +157,8 @@ def main(
         fetch_date = now_utc.date() if force else (now_utc + _KICKOFF_TARGET).date()
         pl = fetch_matches(api_key, "PL", "Premier League", fetch_date)
         ucl = fetch_matches(api_key, "CL", "Champions League", fetch_date)
-        day_matches = pl + ucl
+        wc = fetch_matches(api_key, "WC", "World Cup", fetch_date)
+        day_matches = pl + ucl + wc
         first_slot = _first_match_slot(day_matches)
         if not force and (first_slot is None or not _in_window(first_slot, now_utc, _KICKOFF_TARGET)):
             print("No first-match kickoff alert in 30m window. Skipping.")
@@ -176,14 +183,16 @@ def main(
 
     pl = fetch_matches(api_key, "PL", "Premier League", fetch_date)
     ucl = fetch_matches(api_key, "CL", "Champions League", fetch_date)
+    wc = fetch_matches(api_key, "WC", "World Cup", fetch_date)
     f1 = fetch_sessions(fetch_date)
 
     if reminder_mode:
         pl = [m for m in pl if _in_window(m.get("datetime_utc"), now_utc, _REMINDER_TARGET)]
         ucl = [m for m in ucl if _in_window(m.get("datetime_utc"), now_utc, _REMINDER_TARGET)]
+        wc = [m for m in wc if _in_window(m.get("datetime_utc"), now_utc, _REMINDER_TARGET)]
         f1 = [m for m in f1 if _in_window(m.get("datetime_utc"), now_utc, _REMINDER_TARGET)]
 
-    if not pl and not ucl and not f1:
+    if not pl and not ucl and not wc and not f1:
         mode = "reminder window" if reminder_mode else "today"
         print(f"No matches for {mode}. Skipping.")
         return
@@ -193,6 +202,8 @@ def main(
         matches_by_sport["Premier League"] = pl
     if ucl:
         matches_by_sport["Champions League"] = ucl
+    if wc:
+        matches_by_sport["World Cup"] = wc
     if f1:
         matches_by_sport["Formula 1"] = f1
 
