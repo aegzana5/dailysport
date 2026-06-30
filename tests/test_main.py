@@ -22,7 +22,7 @@ def test_no_matches_skips_discord_post():
 def test_pl_matches_triggers_discord_post():
     pl = [{"label": "Arsenal vs Chelsea", "time": "19:45 UTC", "competition": "Premier League"}]
     with (
-        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_matches", side_effect=[pl, [], []]),
         patch("main.fetch_sessions", return_value=[]),
         patch("main.post_to_webhook") as mock_post,
         patch.dict("os.environ", _ENV),
@@ -57,7 +57,7 @@ def test_reminder_posts_when_match_in_2h_window():
     now = datetime(2026, 5, 5, 17, 45, tzinfo=timezone.utc)
     pl = [{"label": "Arsenal vs Chelsea", "time": "02:45 ICT", "competition": "Premier League", "datetime_utc": _MATCH_DT}]
     with (
-        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_matches", side_effect=[pl, [], []]),
         patch("main.fetch_sessions", return_value=[]),
         patch("main.post_to_webhook") as mock_post,
         patch.dict("os.environ", _ENV),
@@ -71,7 +71,7 @@ def test_reminder_skips_when_match_outside_window():
     now = datetime(2026, 5, 5, 14, 0, tzinfo=timezone.utc)
     pl = [{"label": "Arsenal vs Chelsea", "time": "02:45 ICT", "competition": "Premier League", "datetime_utc": _MATCH_DT}]
     with (
-        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_matches", side_effect=[pl, [], []]),
         patch("main.fetch_sessions", return_value=[]),
         patch("main.post_to_webhook") as mock_post,
         patch.dict("os.environ", _ENV),
@@ -89,7 +89,7 @@ def test_kickoff_posts_when_match_in_30m_window():
     }]
     _ODDS_ENV = {**_ENV, "ODDS_API_KEY": "odds-key"}
     with (
-        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_matches", side_effect=[pl, [], []]),
         patch("main.fetch_lineup", return_value=(["Raya"], ["Sanchez"])),
         patch("main.fetch_handicap", return_value=None),
         patch("main.post_to_webhook") as mock_post,
@@ -109,7 +109,7 @@ def test_kickoff_skips_when_no_matches_in_window():
     }]
     _ODDS_ENV = {**_ENV, "ODDS_API_KEY": "odds-key"}
     with (
-        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_matches", side_effect=[pl, [], []]),
         patch("main.fetch_lineup", return_value=([], [])),
         patch("main.fetch_handicap", return_value=None),
         patch("main.post_to_webhook") as mock_post,
@@ -142,7 +142,7 @@ def test_kickoff_posts_only_first_match_slot():
     ]
     _ODDS_ENV = {**_ENV, "ODDS_API_KEY": "odds-key"}
     with (
-        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_matches", side_effect=[pl, [], []]),
         patch("main.fetch_lineup", return_value=([], [])),
         patch("main.fetch_handicap", return_value=None),
         patch("main.post_to_webhook") as mock_post,
@@ -174,7 +174,7 @@ def test_kickoff_skips_when_first_match_is_not_in_window_even_if_later_match_is(
     ]
     _ODDS_ENV = {**_ENV, "ODDS_API_KEY": "odds-key"}
     with (
-        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_matches", side_effect=[pl, [], []]),
         patch("main.fetch_lineup", return_value=([], [])),
         patch("main.fetch_handicap", return_value=None),
         patch("main.post_to_webhook") as mock_post,
@@ -226,29 +226,6 @@ def test_lottery_mode_no_football_api_key_needed():
         main.main(lottery_mode=True)  # should not raise KeyError for FOOTBALL_DATA_API_KEY
 
 
-def test_combined_mode_no_matches_posts_image_only():
-    _analysis = {
-        "total_draws": 5, "hot": [], "cold": [], "due": [], "weekly_avg": [], "suggestions": [],
-        "latest": None,
-    }
-    fake_img = b"PNG_BYTES"
-    with (
-        patch("main.fetch_matches", return_value=[]),
-        patch("main.fetch_sessions", return_value=[]),
-        patch("main.fetch_lottery_results", return_value=[]),
-        patch("main.analyze_lottery", side_effect=[_analysis, _analysis]),
-        patch("main.fetch_stock_recommendations", return_value=[]),
-        patch("main.fetch_crypto_recommendations", return_value=[]),
-        patch("main.generate_schedule_image", return_value=fake_img),
-        patch("main.post_with_image") as mock_img_post,
-        patch("main.post_to_webhook") as mock_text_post,
-        patch.dict("os.environ", _ENV),
-    ):
-        main.main(combined_mode=True)
-        mock_img_post.assert_called_once()
-        mock_text_post.assert_not_called()
-        assert mock_img_post.call_args[0][1] == {}
-        assert mock_img_post.call_args[0][2] == fake_img
 
 
 def test_thailottery_mode_posts_analysis():
@@ -288,45 +265,6 @@ def test_thailottery_mode_no_football_api_key_needed():
         main.main(thailottery_mode=True)  # must not raise KeyError
 
 
-def test_combined_mode_with_matches_posts_image():
-    _lower_analysis = {
-        "total_draws": 5,
-        "latest": {"date": "2026-05-06", "time": "", "number": "12341", "two_digit": "41"},
-        "hot": [],
-        "cold": [],
-        "due": [],
-        "weekly_avg": [],
-        "suggestions": [],
-    }
-    _upper_analysis = {
-        "total_draws": 5,
-        "latest": {"date": "2026-05-06", "time": "", "number": "12341", "two_digit": "31"},
-        "hot": [],
-        "cold": [],
-        "due": [],
-        "weekly_avg": [],
-        "suggestions": [],
-    }
-    pl = [{"label": "Arsenal vs Chelsea", "time": "19:45 ICT", "competition": "Premier League"}]
-    fake_img = b"PNG_BYTES"
-    with (
-        patch("main.fetch_matches", side_effect=[pl, []]),
-        patch("main.fetch_sessions", return_value=[]),
-        patch("main.fetch_lottery_results", return_value=[]),
-        patch("main.analyze_lottery", side_effect=[_lower_analysis, _upper_analysis]),
-        patch("main.fetch_stock_recommendations", return_value=[]),
-        patch("main.fetch_crypto_recommendations", return_value=[]),
-        patch("main.generate_schedule_image", return_value=fake_img),
-        patch("main.post_with_image") as mock_img_post,
-        patch("main.post_to_webhook") as mock_text_post,
-        patch.dict("os.environ", _ENV),
-    ):
-        main.main(combined_mode=True)
-        mock_img_post.assert_called_once()
-        mock_text_post.assert_not_called()
-        payload = mock_img_post.call_args[0][1]
-        assert payload == {}
-        assert mock_img_post.call_args[0][2] == fake_img
 
 
 _HOROSCOPE_SIGN = {

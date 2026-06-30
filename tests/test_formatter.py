@@ -144,9 +144,9 @@ def test_format_lottery_empty():
 
 
 def test_format_combined_includes_sport_and_lottery():
-    result = format_combined({"Premier League": _PL}, _LOTTERY_ANALYSIS, date(2026, 5, 6))
-    content = result["content"]
-    assert "ตารางกีฬาวันนี้" in content
+    result = format_combined({"Premier League": _PL}, _LOTTERY_ANALYSIS, [], [], date(2026, 5, 6))
+    content = "\n".join(p["content"] for p in result)
+    assert "ตารางกีฬาและหวยลาว" in content
     assert "Arsenal vs Chelsea" in content
     assert "หวยลาว" in content
     assert "41" in content
