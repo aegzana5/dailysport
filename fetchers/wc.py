@@ -4,6 +4,7 @@ import requests
 from datetime import date, datetime, timezone, timedelta
 
 _BASE_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard"
+_SUMMARY_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary"
 _ICT = timezone(timedelta(hours=7))
 
 
@@ -39,3 +40,21 @@ def fetch_wc_matches(today: date | None = None) -> list[dict]:
     except Exception as e:
         print(f"Warning: failed to fetch WC from ESPN: {e}")
         return []
+
+
+def fetch_wc_lineup(event_id: str) -> dict[str, list[str]]:
+    """Returns {"home": [...names], "away": [...names]} — empty lists if not yet announced."""
+    try:
+        resp = requests.get(_SUMMARY_URL, params={"event": event_id}, timeout=10)
+        resp.raise_for_status()
+        rosters = resp.json().get("rosters", [])
+        result: dict[str, list[str]] = {"home": [], "away": []}
+        for i, roster in enumerate(rosters[:2]):
+            key = "home" if i == 0 else "away"
+            entries = roster.get("roster", [])
+            starters = [e for e in entries if e.get("starter")]
+            result[key] = [e.get("athlete", {}).get("shortName") or e.get("athlete", {}).get("displayName", "?") for e in starters]
+        return result
+    except Exception as e:
+        print(f"Warning: failed to fetch WC lineup {event_id}: {e}")
+        return {"home": [], "away": []}

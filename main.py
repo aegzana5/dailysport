@@ -8,7 +8,7 @@ load_dotenv()
 from datetime import date, datetime, timezone, timedelta
 
 from fetchers.football import fetch_matches
-from fetchers.wc import fetch_wc_matches
+from fetchers.wc import fetch_wc_matches, fetch_wc_lineup
 from fetchers.f1 import fetch_sessions
 from fetchers.lineup import fetch_lineup
 from fetchers.odds import fetch_handicap
@@ -21,7 +21,7 @@ from fetchers.thailottery_analyzer import analyze as analyze_thai
 from fetchers.horoscope import fetch_horoscopes
 from fetchers.fpl import fetch_standings as fetch_fpl_standings, fetch_bootstrap, fetch_team_picks
 from fetchers.fpl_scout import fetch_scout_team
-from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined, format_thailottery, format_horoscope, format_fpl_standings, format_fpl_scout, format_fpl_team_picks
+from formatter import format_embed, format_reminder, format_kickoff, format_lottery, format_combined, format_thailottery, format_horoscope, format_fpl_standings, format_fpl_scout, format_fpl_team_picks, format_wc_reminder
 from discord_webhook import post_to_webhook
 
 _REMINDER_TARGET = timedelta(hours=2)
@@ -50,6 +50,8 @@ def _build_lottery_bundle(results: list[dict]) -> dict:
     }
 
 
+_WC_REMINDER_TARGET = timedelta(hours=1)
+
 def main(
     now_utc: datetime | None = None,
     reminder_mode: bool = False,
@@ -59,6 +61,7 @@ def main(
     thailottery_mode: bool = False,
     horoscope_mode: bool = False,
     fpl_mode: bool = False,
+    wc_reminder_mode: bool = False,
 ) -> None:
     if not reminder_mode:
         reminder_mode = "--reminder" in sys.argv
@@ -74,11 +77,31 @@ def main(
         horoscope_mode = "--horoscope" in sys.argv
     if not fpl_mode:
         fpl_mode = "--fpl" in sys.argv
+    if not wc_reminder_mode:
+        wc_reminder_mode = "--wc-reminder" in sys.argv
 
     webhook_url = os.environ["DISCORD_WEBHOOK_URL"]
 
     if now_utc is None:
         now_utc = datetime.now(timezone.utc)
+
+    if wc_reminder_mode:
+        wc_webhook = os.environ.get("WC_WEBHOOK_URL", webhook_url)
+        fetch_date = (now_utc + _WC_REMINDER_TARGET).date()
+        matches = fetch_wc_matches(fetch_date)
+        upcoming = [m for m in matches if _in_window(m.get("datetime_utc"), now_utc, _WC_REMINDER_TARGET)]
+        if not upcoming:
+            print("No WC matches in 1h window. Skipping.")
+            return
+        for m in upcoming:
+            lu = fetch_wc_lineup(m["match_id"])
+            m["home_lineup"] = lu["home"]
+            m["away_lineup"] = lu["away"]
+        payloads = format_wc_reminder(upcoming)
+        for payload in payloads:
+            post_to_webhook(wc_webhook, payload)
+        print(f"Posted WC reminder for {len(upcoming)} match(es).")
+        return
 
     if horoscope_mode:
         horoscope_webhook = os.environ.get("HOROSCOPE_WEBHOOK_URL", webhook_url)

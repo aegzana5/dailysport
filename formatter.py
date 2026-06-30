@@ -356,3 +356,20 @@ def format_horoscope(horoscopes: list[dict], today: date) -> list[dict]:
         payloads.append({"content": content[:split].strip()})
         content = content[split:].strip()
     return payloads
+
+
+def format_wc_reminder(matches: list[dict]) -> list[dict]:
+    payloads = []
+    for m in matches:
+        lines = ["🌍 **ฟุตบอลโลก — เตะในอีก 1 ชั่วโมง**", ""]
+        lines.append(f"⚽ **{m['label']}** — {m['time']}")
+        home_lu = m.get("home_lineup", [])
+        away_lu = m.get("away_lineup", [])
+        if home_lu:
+            lines.append(f"👕 **{m['home_team']}**: {' • '.join(home_lu)}")
+        if away_lu:
+            lines.append(f"👕 **{m['away_team']}**: {' • '.join(away_lu)}")
+        if not home_lu and not away_lu:
+            lines.append("📋 ยังไม่ประกาศไลน์อัพ")
+        payloads.append({"content": "\n".join(lines).strip()})
+    return payloads
