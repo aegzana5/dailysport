@@ -5,6 +5,7 @@ from datetime import date
 _SPORT_ORDER = [
     ("Premier League", "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "พรีเมียร์ลีก"),
     ("Champions League", "🏆", "แชมเปียนส์ลีก"),
+    ("World Cup", "🌍", "ฟุตบอลโลก"),
     ("Formula 1", "🏎️", "ฟอร์มูล่า 1"),
 ]
 
@@ -237,9 +238,11 @@ _FPL_POS_ORDER = ["Goalkeeper", "Defender", "Midfielder", "Forward"]
 def format_fpl_scout(data: dict) -> dict:
     gw = data.get("gameweek", "?")
     players = data.get("players", [])
-    lines = [f"**🤖 FPL Scout AI — GW{gw}**", ""]
+    lines = [f"**🤖 FPL Scout AI**", ""]
     if not players:
         lines.append("ไม่มีข้อมูล")
+        lines.append("")
+        lines.append(f"GW{gw}")
         return {"content": "\n".join(lines).strip()}
     by_pos: dict[str, list] = {p: [] for p in _FPL_POS_ORDER}
     for p in players:
@@ -261,6 +264,7 @@ def format_fpl_scout(data: dict) -> dict:
                 f" — {p['xpts']} xPts{role}"
             )
         lines.append("")
+    lines.append(f"GW{gw}")
     while lines and lines[-1] == "":
         lines.pop()
     return {"content": "\n".join(lines).strip()}
