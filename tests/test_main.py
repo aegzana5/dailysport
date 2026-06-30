@@ -11,6 +11,7 @@ _MATCH_DT = datetime(2026, 5, 5, 19, 45, tzinfo=timezone.utc)
 def test_no_matches_skips_discord_post():
     with (
         patch("main.fetch_matches", return_value=[]),
+        patch("main.fetch_wc_matches", return_value=[]),
         patch("main.fetch_sessions", return_value=[]),
         patch("main.post_to_webhook") as mock_post,
         patch.dict("os.environ", _ENV),
@@ -22,7 +23,8 @@ def test_no_matches_skips_discord_post():
 def test_pl_matches_triggers_discord_post():
     pl = [{"label": "Arsenal vs Chelsea", "time": "19:45 UTC", "competition": "Premier League"}]
     with (
-        patch("main.fetch_matches", side_effect=[pl, [], []]),
+        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_wc_matches", return_value=[]),
         patch("main.fetch_sessions", return_value=[]),
         patch("main.post_to_webhook") as mock_post,
         patch.dict("os.environ", _ENV),
@@ -37,6 +39,7 @@ def test_f1_only_triggers_discord_post():
     f1 = [{"label": "Australia GP — Race", "time": "06:00 UTC", "competition": "Formula 1"}]
     with (
         patch("main.fetch_matches", return_value=[]),
+        patch("main.fetch_wc_matches", return_value=[]),
         patch("main.fetch_sessions", return_value=f1),
         patch("main.post_to_webhook") as mock_post,
         patch.dict("os.environ", _ENV),
@@ -57,7 +60,8 @@ def test_reminder_posts_when_match_in_2h_window():
     now = datetime(2026, 5, 5, 17, 45, tzinfo=timezone.utc)
     pl = [{"label": "Arsenal vs Chelsea", "time": "02:45 ICT", "competition": "Premier League", "datetime_utc": _MATCH_DT}]
     with (
-        patch("main.fetch_matches", side_effect=[pl, [], []]),
+        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_wc_matches", return_value=[]),
         patch("main.fetch_sessions", return_value=[]),
         patch("main.post_to_webhook") as mock_post,
         patch.dict("os.environ", _ENV),
@@ -71,7 +75,8 @@ def test_reminder_skips_when_match_outside_window():
     now = datetime(2026, 5, 5, 14, 0, tzinfo=timezone.utc)
     pl = [{"label": "Arsenal vs Chelsea", "time": "02:45 ICT", "competition": "Premier League", "datetime_utc": _MATCH_DT}]
     with (
-        patch("main.fetch_matches", side_effect=[pl, [], []]),
+        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_wc_matches", return_value=[]),
         patch("main.fetch_sessions", return_value=[]),
         patch("main.post_to_webhook") as mock_post,
         patch.dict("os.environ", _ENV),
@@ -89,7 +94,8 @@ def test_kickoff_posts_when_match_in_30m_window():
     }]
     _ODDS_ENV = {**_ENV, "ODDS_API_KEY": "odds-key"}
     with (
-        patch("main.fetch_matches", side_effect=[pl, [], []]),
+        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_wc_matches", return_value=[]),
         patch("main.fetch_lineup", return_value=(["Raya"], ["Sanchez"])),
         patch("main.fetch_handicap", return_value=None),
         patch("main.post_to_webhook") as mock_post,
@@ -109,7 +115,8 @@ def test_kickoff_skips_when_no_matches_in_window():
     }]
     _ODDS_ENV = {**_ENV, "ODDS_API_KEY": "odds-key"}
     with (
-        patch("main.fetch_matches", side_effect=[pl, [], []]),
+        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_wc_matches", return_value=[]),
         patch("main.fetch_lineup", return_value=([], [])),
         patch("main.fetch_handicap", return_value=None),
         patch("main.post_to_webhook") as mock_post,
@@ -142,7 +149,8 @@ def test_kickoff_posts_only_first_match_slot():
     ]
     _ODDS_ENV = {**_ENV, "ODDS_API_KEY": "odds-key"}
     with (
-        patch("main.fetch_matches", side_effect=[pl, [], []]),
+        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_wc_matches", return_value=[]),
         patch("main.fetch_lineup", return_value=([], [])),
         patch("main.fetch_handicap", return_value=None),
         patch("main.post_to_webhook") as mock_post,
@@ -174,7 +182,8 @@ def test_kickoff_skips_when_first_match_is_not_in_window_even_if_later_match_is(
     ]
     _ODDS_ENV = {**_ENV, "ODDS_API_KEY": "odds-key"}
     with (
-        patch("main.fetch_matches", side_effect=[pl, [], []]),
+        patch("main.fetch_matches", side_effect=[pl, []]),
+        patch("main.fetch_wc_matches", return_value=[]),
         patch("main.fetch_lineup", return_value=([], [])),
         patch("main.fetch_handicap", return_value=None),
         patch("main.post_to_webhook") as mock_post,
@@ -226,8 +235,6 @@ def test_lottery_mode_no_football_api_key_needed():
         main.main(lottery_mode=True)  # should not raise KeyError for FOOTBALL_DATA_API_KEY
 
 
-
-
 def test_thailottery_mode_posts_analysis():
     _analysis = {
         "total_draws": 100,
@@ -263,8 +270,6 @@ def test_thailottery_mode_no_football_api_key_needed():
         patch.dict("os.environ", {"DISCORD_WEBHOOK_URL": "https://hook"}, clear=True),
     ):
         main.main(thailottery_mode=True)  # must not raise KeyError
-
-
 
 
 _HOROSCOPE_SIGN = {

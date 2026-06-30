@@ -8,6 +8,7 @@ load_dotenv()
 from datetime import date, datetime, timezone, timedelta
 
 from fetchers.football import fetch_matches
+from fetchers.wc import fetch_wc_matches
 from fetchers.f1 import fetch_sessions
 from fetchers.lineup import fetch_lineup
 from fetchers.odds import fetch_handicap
@@ -129,7 +130,7 @@ def main(
         today = now_utc.date()
         pl = fetch_matches(api_key, "PL", "Premier League", today)
         ucl = fetch_matches(api_key, "CL", "Champions League", today)
-        wc = fetch_matches(api_key, "WC", "World Cup", today)
+        wc = fetch_wc_matches(today)
         f1 = fetch_sessions(today)
         matches_by_sport: dict[str, list[dict]] = {}
         if pl:
@@ -157,7 +158,7 @@ def main(
         fetch_date = now_utc.date() if force else (now_utc + _KICKOFF_TARGET).date()
         pl = fetch_matches(api_key, "PL", "Premier League", fetch_date)
         ucl = fetch_matches(api_key, "CL", "Champions League", fetch_date)
-        wc = fetch_matches(api_key, "WC", "World Cup", fetch_date)
+        wc = fetch_wc_matches(fetch_date)
         day_matches = pl + ucl + wc
         first_slot = _first_match_slot(day_matches)
         if not force and (first_slot is None or not _in_window(first_slot, now_utc, _KICKOFF_TARGET)):
@@ -183,7 +184,7 @@ def main(
 
     pl = fetch_matches(api_key, "PL", "Premier League", fetch_date)
     ucl = fetch_matches(api_key, "CL", "Champions League", fetch_date)
-    wc = fetch_matches(api_key, "WC", "World Cup", fetch_date)
+    wc = fetch_wc_matches(fetch_date)
     f1 = fetch_sessions(fetch_date)
 
     if reminder_mode:
