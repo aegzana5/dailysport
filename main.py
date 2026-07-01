@@ -86,7 +86,7 @@ def main(
         now_utc = datetime.now(timezone.utc)
 
     if wc_reminder_mode:
-        wc_webhook = os.environ.get("WC_WEBHOOK_URL", webhook_url)
+        wc_webhook = os.environ.get("WC_WEBHOOK_URL") or webhook_url
         fetch_date = (now_utc + _WC_REMINDER_TARGET).date()
         matches = fetch_wc_matches(fetch_date)
         upcoming = [m for m in matches if _in_window(m.get("datetime_utc"), now_utc, _WC_REMINDER_TARGET)]
