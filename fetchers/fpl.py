@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import requests
 
-_URL = "https://fantasy.premierleague.com/api/leagues-classic/102993/standings/"
+_URL = "https://fantasy.premierleague.com/api/leagues-classic/161756/standings/"
 _BASE = "https://fantasy.premierleague.com/api"
 _TIMEOUT = 10
 _HEADERS = {"User-Agent": "Mozilla/5.0"}

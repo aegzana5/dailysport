@@ -270,13 +270,13 @@ def format_fpl_scout(data: dict) -> dict:
     return {"content": "\n".join(lines).strip()}
 
 
-def format_fpl_standings(data: dict, today: date) -> dict:
+def format_fpl_standings(data: dict, today: date) -> list[dict]:
     league_name = data.get("league_name", "FPL League")
     standings = data.get("standings", [])
     lines = [f"**🏆 {league_name} — {today.isoformat()}**", ""]
     if not standings:
         lines.append("ไม่มีข้อมูล")
-        return {"content": "\n".join(lines).strip()}
+        return [{"content": "\n".join(lines).strip()}]
     for s in standings:
         rank = s["rank"]
         last_rank = s["last_rank"]
@@ -290,7 +290,18 @@ def format_fpl_standings(data: dict, today: date) -> dict:
             f"`{rank:>2}.` {arrow} **{s['entry_name']}** ({s['player_name']})"
             f" — {s['total']} pts (+{s['event_total']} GW)"
         )
-    return {"content": "\n".join(lines).strip()}
+    content = "\n".join(lines).strip()
+    payloads: list[dict] = []
+    while content:
+        if len(content) <= 2000:
+            payloads.append({"content": content})
+            break
+        split = content.rfind("\n", 0, 2000)
+        if split == -1:
+            split = 2000
+        payloads.append({"content": content[:split].strip()})
+        content = content[split:].strip()
+    return payloads
 
 
 def format_fpl_team_picks(

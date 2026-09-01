@@ -6,20 +6,16 @@ _BASE = "https://openfpl-scout-ai-186049008266.europe-west1.run.app"
 _TIMEOUT = 10
 
 
-def fetch_scout_team() -> dict:
+def fetch_scout_team(gameweek: int) -> dict:
     try:
-        gw_res = requests.get(f"{_BASE}/api/gameweeks", timeout=_TIMEOUT)
-        gw_res.raise_for_status()
-        latest_gw = gw_res.json().get("latest", 38)
-
         data_res = requests.get(
-            f"{_BASE}/data/internal/scout_team/gw_{latest_gw}.json",
+            f"{_BASE}/data/internal/scout_team/gw_{gameweek}.json",
             timeout=_TIMEOUT,
         )
         data_res.raise_for_status()
         data = data_res.json()
         return {
-            "gameweek": latest_gw,
+            "gameweek": gameweek,
             "players": [
                 {
                     "name": p["web_name"],

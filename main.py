@@ -137,8 +137,8 @@ def main(
         scout_payload = format_fpl_scout(scout)
         post_to_webhook(fpl_webhook, scout_payload)
         standings = fetch_fpl_standings()
-        standings_payload = format_fpl_standings(standings, now_utc.date())
-        post_to_webhook(fpl_webhook, standings_payload)
+        for payload in format_fpl_standings(standings, now_utc.date()):
+            post_to_webhook(fpl_webhook, payload)
         picks_map: dict = {}
         for s in standings["standings"]:
             picks_map[s["entry_id"]] = fetch_team_picks(s["entry_id"], gw)
