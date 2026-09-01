@@ -9,7 +9,8 @@ _TIMEOUT = 10
 def fetch_scout_team(gameweek: int) -> dict:
     try:
         data_res = requests.get(
-            f"{_BASE}/data/internal/scout_team/gw_{gameweek}.json",
+            f"{_BASE}/api/scout",
+            params={"gameweek": gameweek},
             timeout=_TIMEOUT,
         )
         data_res.raise_for_status()
