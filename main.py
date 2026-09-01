@@ -129,7 +129,7 @@ def main(
         return
 
     if fpl_mode:
-        fpl_webhook = os.environ.get("FPL_WEBHOOK_URL", webhook_url)
+        fpl_webhook = os.environ.get("FPL_WEBHOOK_URL") or webhook_url
         bootstrap = fetch_bootstrap()
         gw = bootstrap["current_gw"]
         name_map = bootstrap["name_map"]
