@@ -97,7 +97,11 @@ As of 2026-09-01:
 - Workflow runs daily `--combined` at 05:00 UTC (12:00 TH)
 - Horoscope job is **disabled** in the workflow (`1fdbfd4`)
 - FPL mode posts: scout → standings (now chunked) → team picks to `FPL_WEBHOOK_URL`
-- Verified `--fpl` locally: standings crash fixed (50-entry league now posts fine); scout team returns 404 for GW2 from external `openfpl-scout-ai` API (data not published yet upstream, not our bug) — degrades gracefully with a warning
 - FPL league switched from `102993` to `161756` ("Dorsor FPL", 9 entries) — `fetchers/fpl.py` `_URL`
-- Uncommitted: `formatter.py` (standings chunking fix), `main.py` (loop over chunked standings payload), `fetchers/fpl_scout.py` (gameweek param, already staged before this session), `fetchers/fpl.py` (league ID)
+- Scout fetch moved from dead `/data/internal/scout_team/gw_N.json` path to `/api/scout?gameweek=N` — old path 404s, new one live, same field shape
+- `--fpl` verified end-to-end: scout (GW2, 15 players) + standings (9 entries, chunked) + team picks all post clean
+- Committed: `4f2d893` (standings chunk fix + league switch + scout gameweek param), `1dd09e5` (scout endpoint swap)
+- FPL scheduled: Fri 18:00 TH (`0 11 * * 5` UTC) + Tue 10:00 TH (`0 3 * * 2` UTC), workflow job `fpl` in `sport-lottery.yml`
+- Friday run previews next gameweek: `main.py` uses `gw+1` for scout only (weekday()==4) when scheduled Friday; standings/picks stay on current gw
+- No `FPL_WEBHOOK_URL` secret set yet — falls back to `DISCORD_WEBHOOK_URL` (mirrors WC's `c5c286c` fallback pattern, fixed for FPL in `12369dd`)
 - No active in-progress tasks
