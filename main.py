@@ -133,7 +133,8 @@ def main(
         bootstrap = fetch_bootstrap()
         gw = bootstrap["current_gw"]
         name_map = bootstrap["name_map"]
-        scout = fetch_scout_team(gw)
+        scout_gw = gw + 1 if now_utc.weekday() == 4 else gw
+        scout = fetch_scout_team(scout_gw)
         scout_payload = format_fpl_scout(scout)
         post_to_webhook(fpl_webhook, scout_payload)
         standings = fetch_fpl_standings()
